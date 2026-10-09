@@ -32,3 +32,6 @@ publish/
 **/coverage/
 **/TestResults/
 *.log
+
+# Frontend Angular compilado dentro del backend
+backend/CampusFix.Api/wwwroot/
