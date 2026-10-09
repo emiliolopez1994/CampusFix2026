@@ -1,0 +1,38 @@
+@base = http://localhost:5137
+@token = REEMPLAZAR_CON_TOKEN_DEL_LOGIN
+
+### Estado real de PostgreSQL
+GET {{base}}/api/health
+
+### Iniciar sesión con cuenta existente
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{"correo":"TU_CORREO","password":"TU_CONTRASENA"}
+
+### Restaurar sesión y permisos efectivos
+GET {{base}}/api/auth/me
+Authorization: Bearer {{token}}
+
+### Datos visibles según permisos
+GET {{base}}/api/data
+Authorization: Bearer {{token}}
+
+### Crear reporte
+POST {{base}}/api/reportes
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"problema":"Proyector sin señal","ubicacion":"Aula 205","descripcion":"El cable HDMI no entrega imagen.","prioridad":2,"areaId":"","serviceId":"","categoryId":"","teamId":"","custom":{}}
+
+### Consultar reportes
+GET {{base}}/api/reportes
+Authorization: Bearer {{token}}
+
+### Analítica (requiere permiso)
+GET {{base}}/api/analytics
+Authorization: Bearer {{token}}
+
+### Cerrar sesión
+POST {{base}}/api/auth/logout
+Authorization: Bearer {{token}}
