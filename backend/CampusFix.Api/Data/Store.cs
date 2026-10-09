@@ -34,7 +34,9 @@ public class Store(CampusFixDbContext db):IStore {
  public async Task<long> Next(string name){
   // PostgreSQL performs this allocation atomically, including concurrent requests.
   await db.Database.ExecuteSqlInterpolatedAsync($"""INSERT INTO "Secuencias" ("Name","Value") VALUES ({name},0) ON CONFLICT ("Name") DO NOTHING""");
-  var values=await db.Database.SqlQuery<long>($"""UPDATE "Secuencias" SET "Value"="Value"+1 WHERE "Name"={name} RETURNING "Value""").ToListAsync();return values.Single();
+  var values=await db.Database.SqlQuery<long>($"""
+   UPDATE "Secuencias" SET "Value"="Value"+1 WHERE "Name"={name} RETURNING "Value"
+   """).ToListAsync();return values.Single();
  }
  public async Task PutFile(Archivo f){db.Archivos.Add(f);await db.SaveChangesAsync();db.ChangeTracker.Clear();}
  public Task<Archivo?> GetFile(string key)=>db.Archivos.AsNoTracking().SingleOrDefaultAsync(x=>x.Key==key);

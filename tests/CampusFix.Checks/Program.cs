@@ -36,6 +36,14 @@ await store.Save("config",Obj(new{id="team",kind="equipos",nombre="Soporte",acti
 await store.Save("config",Obj(new{id="service",kind="servicios",nombre="Tecnología",activo=true,teamId="team",fields=new[]{new{id="asset",label="Activo",type="text",required=true,@internal=false,options=Array.Empty<string>()},new{id="secret",label="Diagnóstico interno",type="text",required=false,@internal=true,options=Array.Empty<string>()}}}));
 await store.Save("config",Obj(new{id="meta",kind="metas",nombre="Atención prioritaria",activo=true,prioridad=2,responseHours=4,resolutionHours=24}));
 JsonObject TicketBody()=>Obj(new{problema="Proyector sin señal",ubicacion="Aula 205",descripcion="No reconoce HDMI",prioridad=2,areaId="area",serviceId="service",custom=new{asset="P-205",secret="Should be removed"}});
+var invalidTicket=TicketBody();invalidTicket["custom"]=new JsonObject();await Denied(400,"reportes","POST",invalidTicket,student,"Required dynamic field rejected with validation error");
+await store.Save("config",Obj(new{id="foreign-area",kind="areas",nombre="Área ajena",activo=true}));
+invalidTicket=TicketBody();invalidTicket["areaId"]="foreign-area";await Denied(403,"reportes","POST",invalidTicket,student,"Requester cannot create tickets for an unauthorized area");
+var unclassified=TicketBody();unclassified["areaId"]="";var unclassifiedTicket=await Call("reportes","POST",unclassified,student);Assert(unclassifiedTicket.S("areaId")=="","Explicit pending classification does not silently restore the main area");
+await Call($"reportes/{unclassifiedTicket.S("id")}","DELETE",new(),admin);
+var registered=Principal(await Call("auth/registro","POST",Obj(new{correo="new-requester@example.edu",nombre="Nuevo solicitante",password})));
+var newBody=TicketBody();newBody["areaId"]="";var newTicket=await Call("reportes","POST",newBody,registered);Assert(newTicket.S("reportadoPorId")=="new-requester@example.edu"&&newTicket.S("areaId")=="","Public registration without area can create an unclassified ticket");
+await Call($"reportes/{newTicket.S("id")}","DELETE",new(),admin);
 var ticket=(await Call("reportes","POST",TicketBody(),student)).AsObject();var id=ticket.S("id");
 Assert(ticket.I("estado")==1&&ticket.S("reportadoPorId")=="student@example.edu"&&ticket.S("teamId")=="team","Create ticket preserves reporter, initial state and suggested team");
 Assert(ticket["meta"] is JsonObject&&!ticket.O("custom").ContainsKey("secret"),"SLA snapshot recorded; requester cannot inject internal fields");
