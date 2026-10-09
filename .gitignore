@@ -35,3 +35,7 @@ publish/
 
 # Frontend Angular compilado dentro del backend
 backend/CampusFix.Api/wwwroot/
+
+# Datos locales de CampusFix
+database/02-datos-postgresql.sql
+database/datos-campusfix.json
