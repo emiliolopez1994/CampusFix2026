@@ -1,0 +1,85 @@
+using CampusFix.Api.Data;
+using Microsoft.EntityFrameworkCore;
+using CampusFix.Api.Models;
+using CampusFix.Api.Services;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using static CampusFix.Api.Services.J;
+var pg=args.Contains("--postgres");
+var testConnection=Environment.GetEnvironmentVariable("CAMPUSFIX_TEST_POSTGRES");
+if(pg&&string.IsNullOrWhiteSpace(testConnection))throw new Exception("CAMPUSFIX_TEST_POSTGRES debe apuntar a una base de pruebas vacía.");
+await using var db=pg?new CampusFixDbContext(new DbContextOptionsBuilder<CampusFixDbContext>().UseNpgsql(testConnection!).Options):null;
+if(db!=null){await db.Database.MigrateAsync();if(await db.Users.AnyAsync()||await db.Documentos.AnyAsync())throw new Exception("La base de pruebas debe estar vacía. No se modificaron datos.");}
+await using var transaction=db!=null?await db.Database.BeginTransactionAsync():null;
+IStore store=db==null?new MemoryStore():new Store(db);var hasher=new PasswordHasher<Usuario>();var key=Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(64));var configuration=new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string,string?>{{"Jwt:Key",key},{"Mail:EncryptionKey",key}}).Build();int checks=0;
+void Assert(bool ok,string message){if(!ok)throw new Exception("FAIL: "+message);checks++;Console.WriteLine("PASS "+message);}
+async Task<JsonNode> Call(string path,string method="GET",JsonObject? b=null,ClaimsPrincipal? principal=null){var service=new CampusService(store,configuration,hasher,new NoNetwork());return JsonSerializer.SerializeToNode(await service.Run(path,method,b??new(),principal??new(),new QueryCollection()))!;}
+async Task Denied(int status,string path,string method,JsonObject b,ClaimsPrincipal principal,string label){try{await Call(path,method,b,principal);throw new Exception("Expected rejection: "+label);}catch(ApiError e){Assert(e.Status==status,label);}}
+ClaimsPrincipal Principal(JsonNode response)=>new JwtSecurityTokenHandler{MapInboundClaims=false}.ValidateToken(response.S("token"),new(){ValidateIssuer=true,ValidateAudience=true,ValidateLifetime=true,ValidateIssuerSigningKey=true,ValidIssuer="CampusFix.Api",ValidAudience="CampusFix.Angular",IssuerSigningKey=new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),ClockSkew=TimeSpan.Zero},out _);
+const string password="CampusClaveSegura123";
+foreach(var role in Permissions.Roles){var userId=role switch{"Superadministrador"=>"owner@example.edu","Administrador"=>"admin@example.edu","Técnico"=>"tech@example.edu",_=>"student@example.edu"};await store.Save("users",Obj(new{id=userId,correo=userId,nombre=role,role,activo=true,passwordHash=hasher.HashPassword(new Usuario(),password),stamp=Id(),areas=new[]{"area"},areaId="area"}));}
+async Task<ClaimsPrincipal> SignIn(string email)=>Principal(await Call("auth/login","POST",Obj(new{correo=email,password})));
+var owner=await SignIn("owner@example.edu");var admin=await SignIn("admin@example.edu");var tech=await SignIn("tech@example.edu");var student=await SignIn("student@example.edu");
+Assert((await Call("auth/me",principal:owner)).O("permissions").B("configuracion"),"Identity hash and signed JWT restore owner permissions");
+await Denied(401,"data","GET",new(),new(),"Unauthenticated access rejected");
+await Denied(403,"permisos","GET",new(),admin,"Administrator cannot edit owner permissions");
+await Denied(403,"usuarios","POST",Obj(new{correo="othertech@example.edu",password,nombre="Other",role="Técnico"}),admin,"Only owner creates privileged roles");
+await store.Save("config",Obj(new{id="area",kind="areas",nombre="Académica",activo=true}));
+await store.Save("config",Obj(new{id="team",kind="equipos",nombre="Soporte",activo=true,members=new[]{"tech@example.edu"}}));
+await store.Save("config",Obj(new{id="service",kind="servicios",nombre="Tecnología",activo=true,teamId="team",fields=new[]{new{id="asset",label="Activo",type="text",required=true,@internal=false,options=Array.Empty<string>()},new{id="secret",label="Diagnóstico interno",type="text",required=false,@internal=true,options=Array.Empty<string>()}}}));
+await store.Save("config",Obj(new{id="meta",kind="metas",nombre="Atención prioritaria",activo=true,prioridad=2,responseHours=4,resolutionHours=24}));
+JsonObject TicketBody()=>Obj(new{problema="Proyector sin señal",ubicacion="Aula 205",descripcion="No reconoce HDMI",prioridad=2,areaId="area",serviceId="service",custom=new{asset="P-205",secret="Should be removed"}});
+var ticket=(await Call("reportes","POST",TicketBody(),student)).AsObject();var id=ticket.S("id");
+Assert(ticket.I("estado")==1&&ticket.S("reportadoPorId")=="student@example.edu"&&ticket.S("teamId")=="team","Create ticket preserves reporter, initial state and suggested team");
+Assert(ticket["meta"] is JsonObject&&!ticket.O("custom").ContainsKey("secret"),"SLA snapshot recorded; requester cannot inject internal fields");
+Assert((await Call("data",principal:tech)).A("tickets").Count==0,"Technician cannot see unassigned tickets outside scope");
+await Denied(403,$"reportes/{id}/estado","PATCH",Obj(new{estado=2,version=ticket.I("_v")}),student,"Requester cannot advance ticket state");
+await Denied(409,$"reportes/{id}/asignar","PUT",Obj(new{tecnicoId="tech@example.edu",version=0}),admin,"Stale update rejected");
+ticket=(await Call($"reportes/{id}/asignar","PUT",Obj(new{tecnicoId="tech@example.edu",version=ticket.I("_v")}),admin)).AsObject();
+Assert((await Call("data",principal:tech)).A("tickets").Count==1,"Assigned technician can see ticket");
+await Denied(409,$"reportes/{id}/estado","PATCH",Obj(new{estado=3,version=ticket.I("_v")}),tech,"Skipping workflow state rejected");
+ticket=(await Call($"reportes/{id}/estado","PATCH",Obj(new{estado=2,version=ticket.I("_v")}),tech)).AsObject();
+ticket=(await Call($"reportes/{id}/mensajes","POST",Obj(new{text="Revisando conectores",@internal=true,version=ticket.I("_v")}),tech)).AsObject();
+Assert(ticket.S("firstResponseAt")=="","Internal note does not count as public response");
+var safe=await Call($"reportes/{id}",principal:student);Assert(safe.A("messages").Count==0&&!safe.A("historial").Items().Any(h=>h.B("internal")),"Internal messages and history hidden from requester");
+ticket=(await Call($"reportes/{id}/mensajes","POST",Obj(new{text="Recibimos tu solicitud",@internal=false,file=new{name="detalle.txt",type="text/plain",data=Convert.ToBase64String("Conector revisado"u8)},version=ticket.I("_v")}),tech)).AsObject();
+Assert(ticket.S("firstResponseAt")!=""&&await store.GetFile(ticket.A("messages").Items().Last().O("file").S("key"))!=null,"Public response records time and attachment");
+await Denied(400,$"reportes/{id}/mensajes","POST",Obj(new{text="Adjunto",file=new{name="x.pdf",type="application/pdf",data=Convert.ToBase64String("wrong"u8)},version=ticket.I("_v")}),tech,"Attachment content signature validated");
+ticket=(await Call($"reportes/{id}/estado","PATCH",Obj(new{estado=3,version=ticket.I("_v")}),tech)).AsObject();
+await Denied(400,$"reportes/{id}/estado","PATCH",Obj(new{estado=4,version=ticket.I("_v")}),tech,"Closing without documented solution rejected");
+ticket=(await Call($"reportes/{id}/solucion","PUT",Obj(new{solucion="Se reemplazó el cable HDMI y se verificó la imagen.",cerrar=true,version=ticket.I("_v")}),tech)).AsObject();
+Assert(ticket.I("estado")==4&&ticket.S("resolvedTechnicianId")=="tech@example.edu","Solution closes ticket and freezes responsible technician");
+await Denied(403,$"reportes/{id}/valoracion","PUT",Obj(new{score=5,comment="",version=ticket.I("_v")}),tech,"Technician cannot rate own work");
+ticket=(await Call($"reportes/{id}/valoracion","PUT",Obj(new{score=5,comment="Atención oportuna",version=ticket.I("_v")}),student)).AsObject();Assert(ticket.O("rating").I("score")==5,"Requester rating persisted against resolved technician");
+var articleBody=Obj(new{title="Restablecer señal HDMI",body=ticket.S("solucion"),sourceTicketId=id,visibility="usuarios",status="Borrador",serviceId="service",keywords="HDMI"});
+var article=(await Call("articles","POST",articleBody,tech)).AsObject();Assert(article.S("sourceTicketId")==id,"Knowledge draft linked to resolved ticket");
+articleBody=Merge(article,Obj(new{status="Publicado",version=article.I("_v")}));await Denied(403,"articles","POST",articleBody,tech,"Technician cannot publish knowledge");
+article=(await Call("articles","POST",articleBody,admin)).AsObject();Assert(article.A("versions").Count==1&&(await Call("data",principal:student)).A("articles").Count==1,"Publication visible and prior revision preserved");
+await Call("votes","POST",Obj(new{articleId=article.S("id"),helpful=true,ticketId=id}),student);var analytics=await Call("analytics",principal:admin);Assert(analytics.I("resolved")==1&&analytics.I("helpful")==1&&analytics.I("reused")==1,"Analytics use real closed tickets and knowledge votes");
+var notices=(JsonArray)await Call("notifications",principal:student);Assert(notices.Count>0&&!notices.Items().Any(n=>n.B("internal")),"Requester receives visible notifications only");await Call("notifications","PUT",Obj(new{all=true}),student);Assert(((JsonArray)await Call("notifications",principal:student)).Items().All(n=>n.B("read")),"Mark notifications read");
+var cfg=Obj(new{kind="areas",nombre="Biblioteca",activo=true});var area=(await Call("config","POST",cfg,admin)).AsObject();cfg=Merge(area,Obj(new{parentId=area.S("id"),version=area.I("_v")}));await Denied(400,"config","POST",cfg,admin,"Circular configuration hierarchy rejected");
+Assert(BusinessCalendar.Due("2026-10-09T21:30:00Z",2,Obj(new{timezone="America/Guayaquil",days=new[]{1,2,3,4,5},start="08:00",end="17:00",holidays=Array.Empty<string>()})).StartsWith("2026-10-12T14:30"),"Business SLA skips weekend in institutional timezone");
+var roleDoc=await store.Get("roles","Solicitante");await Call("permisos","PUT",Obj(new{type="role",id="Solicitante",permissions=new{crear=false},scope="propios"}),owner);await Denied(401,"data","GET",new(),student,"Permission changes invalidate existing sessions");student=await SignIn("student@example.edu");await Denied(403,"reportes","POST",TicketBody(),student,"Updated role restrictions enforced server side");
+var user=await store.Get("users","student@example.edu");await Call("usuarios/student%40example.edu/reset","PUT",Obj(new{password="NuevaClaveSegura123",version=user!.I("_v")}),admin);await Denied(401,"auth/me","GET",new(),student,"Password reset revokes sessions");var resetLogin=await Call("auth/login","POST",Obj(new{correo="student@example.edu",password="NuevaClaveSegura123"}));student=Principal(resetLogin);Assert(resetLogin.B("mustChange"),"Reset password requires first-login change");await Denied(403,"data","GET",new(),student,"Forced password change blocks business actions");await Call("auth/password","POST",Obj(new{current="NuevaClaveSegura123",password="OtraClaveSegura123"}),student);await Denied(401,"auth/me","GET",new(),student,"Changing password invalidates session");
+await Call("auth/logout","POST",new(),tech);await Denied(401,"auth/me","GET",new(),tech,"Logout revokes JWT session");
+for(int i=0;i<5;i++)await Denied(401,"auth/login","POST",Obj(new{correo="tech@example.edu",password="incorrecta"}),new(),"Failed login counted "+(i+1));await Denied(423,"auth/login","POST",Obj(new{correo="tech@example.edu",password}),new(),"Account locks after five failures");
+await Call($"reportes/{id}","DELETE",new(),admin);Assert((await Call("data",principal:admin)).A("tickets").Count==0&&(await store.Get("tickets",id))!.A("historial").Count>0,"Archive hides ticket and preserves its history");
+if(transaction!=null)await transaction.RollbackAsync();
+Console.WriteLine($"SUCCESS: {checks} checks. Storage: {(pg?"PostgreSQL; test data rolled back":"isolated memory; PostgreSQL NOT validated")}.");
+class NoNetwork:IHttpClientFactory {public HttpClient CreateClient(string name)=>throw new Exception("Network is forbidden in business checks");}
+class MemoryStore:IStore {
+ readonly Dictionary<string,JsonObject> records=new();readonly Dictionary<string,long> sequences=new();public Dictionary<string,Archivo> Files=new();
+ public Task<List<JsonObject>> All(string kind)=>Task.FromResult(records.Where(k=>k.Key.StartsWith(kind+"/",StringComparison.Ordinal)).Select(k=>k.Value.Copy()).ToList());
+ public Task<JsonObject?> Get(string kind,string id)=>Task.FromResult(records.TryGetValue(kind+"/"+id,out var value)?value.Copy():null);
+ public Task<JsonObject> Save(string kind,JsonObject value){var key=kind+"/"+value.S("id");var old=records.GetValueOrDefault(key);Require(value.I("_v")==old.I("_v"),409,"Conflict");var j=value.Copy();j["_v"]=old.I("_v")+1;records[key]=j;return Task.FromResult(j.Copy());}
+ public Task<long> Next(string name){sequences[name]=sequences.GetValueOrDefault(name)+1;return Task.FromResult(sequences[name]);}
+ public Task PutFile(Archivo file){Files.Add(file.Key,file);return Task.CompletedTask;}
+ public Task<Archivo?> GetFile(string key)=>Task.FromResult(Files.GetValueOrDefault(key));
+}
