@@ -1,0 +1,27 @@
+<div class="shell">
+  <aside class="sidebar">
+    <a routerLink="/" class="brand"
+      ><span class="brand-icon">C<span>+</span></span>
+      <div>CampusFix<small>CAMPUS SERVICE DESK</small></div></a
+    >
+    <div class="nav-label">ESPACIO DE TRABAJO</div>
+    <nav>
+      <a routerLink="/panel" routerLinkActive="active"><span>◫</span> Vista general</a
+      ><a routerLink="/reportes" routerLinkActive="active"><span>▤</span> Reportes</a
+      ><a routerLink="/tablero" routerLinkActive="active"><span>▥</span> Tablero de estados</a
+      ><a routerLink="/personas" routerLinkActive="active"><span>♧</span> Personas</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <span class="mini-mark">CF</span>
+      <div>Gestión institucional<small>Espacios que funcionan mejor</small></div>
+    </div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar">
+      <span>Institución <span class="slash">/</span> Mesa de servicio</span
+      ><span class="workspace-chip">CampusFix · Académico</span>
+    </header>
+    <main><router-outlet /></main>
+    <footer>CampusFix <span>Gestión de incidencias · Trazabilidad de principio a fin</span></footer>
+  </div>
+</div>

@@ -1,0 +1,18 @@
+import {TestBed} from '@angular/core/testing';import {provideRouter,ActivatedRoute} from '@angular/router';import {provideHttpClient} from '@angular/common/http';import {provideHttpClientTesting,HttpTestingController} from '@angular/common/http/testing';import {Insights} from './insights';
+describe('Fichas y detalle de indicadores',()=>{
+ it('muestra opiniones reales y abre su ticket en un diálogo con foco',async()=>{TestBed.configureTestingModule({providers:[provideRouter([]),provideHttpClient(),provideHttpClientTesting(),{provide:ActivatedRoute,useValue:{snapshot:{data:{vista:'equipo'}}}}]});const f=TestBed.createComponent(Insights);TestBed.inject(HttpTestingController).expectOne('/api/data').flush({user:{id:'a',nombre:'Admin',permissions:{panel:true,analitica:true}},config:[],notifications:[],articles:[],users:[{id:'tech',nombre:'Técnico Ejemplo',role:'Técnico',activo:true}],tickets:[{id:'1',problema:'Proyector',estado:4,prioridad:2,fechaReporte:'2026-10-01T15:00:00Z',fechaSolucion:'2026-10-02T15:00:00Z',fechaActualizacion:'2026-10-02T15:00:00Z',tecnicoId:'tech',tecnicoNombre:'Técnico Ejemplo',rating:{technicianId:'tech',technicianName:'Técnico Ejemplo',score:4,comment:'Buena atención',fecha:'2026-10-02T16:00:00Z'}}]});await f.whenStable();f.componentInstance.start.set('2026-10-01');f.componentInstance.end.set('2026-10-03');f.detectChanges();expect(f.nativeElement.textContent).toContain('Técnico Ejemplo');expect(f.nativeElement.textContent).toContain('4.0 / 5');const btn=Array.from(f.nativeElement.querySelectorAll('button')).find((b:any)=>b.textContent.includes('Ver valoraciones')) as HTMLButtonElement;btn.click();f.detectChanges();expect(f.nativeElement.querySelector('[role=dialog]').textContent).toContain('Buena atención');expect(document.body.style.overflow).toBe('hidden');f.componentInstance.detail.set(null);f.detectChanges();expect(document.body.style.overflow).not.toBe('hidden');f.componentInstance.area.set('otra');expect(f.componentInstance.ratingMean()).toBeNull();f.destroy();TestBed.inject(HttpTestingController).verify();});
+});
+
+describe('Cada vista tiene una función distinta',()=>{
+ for(const view of ['panel','analitica','informes'])it('separa contenido de '+view,async()=>{
+ TestBed.configureTestingModule({providers:[provideRouter([]),provideHttpClient(),provideHttpClientTesting(),{provide:ActivatedRoute,useValue:{snapshot:{data:{vista:view}}}}]});
+ const f=TestBed.createComponent(Insights),http=TestBed.inject(HttpTestingController);
+ http.expectOne('/api/data').flush({user:{id:'a',nombre:'Admin',permissions:{panel:true,analitica:true}},config:[],notifications:[],articles:[],users:[],tickets:[]});
+ await Promise.resolve();if(view==='analitica')http.expectOne('/api/analytics').flush({helpful:0,votes:0,reused:0});await f.whenStable();f.detectChanges();
+ const text=f.nativeElement.textContent;
+ if(view==='panel'){expect(text).toContain('Atender primero');expect(text).toContain('Sin asignar');expect(text).not.toContain('Actividad de la mesa de servicio');expect(text).not.toContain('Primera respuesta media');expect(f.nativeElement.querySelector('input[type=date]')).toBeNull();}
+ if(view==='analitica'){expect(text).toContain('Primera respuesta media');expect(text).toContain('Actividad de la mesa de servicio');expect(text).not.toContain('Atender primero');expect(text).not.toContain('Descargas de esta sesión');}
+ if(view==='informes'){expect(text).toContain('Descargas de esta sesión');expect(f.nativeElement.querySelector('cf-series')).toBeNull();expect(f.nativeElement.querySelector('cf-donut')).toBeNull();expect(f.nativeElement.querySelector('.insight-metrics')).toBeNull();}
+ f.destroy();http.verify();
+ });
+});

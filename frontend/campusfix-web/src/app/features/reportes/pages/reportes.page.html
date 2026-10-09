@@ -1,0 +1,795 @@
+<section class="page-heading">
+  <div>
+    <div class="eyebrow">CUIDAMOS TU CAMPUS</div>
+
+    <h1>
+      {{
+        vista === 'panel'
+          ? 'Cada incidencia, bajo control.'
+          : vista === 'personas'
+            ? 'Personas'
+            : vista === 'tablero'
+              ? 'Del reporte a la solución'
+              : 'Central de reportes'
+      }}
+    </h1>
+
+    <p>
+      {{
+        vista === 'personas'
+          ? 'Registra a quienes reportan los problemas de la institución.'
+          : 'Organiza, atiende y da seguimiento a los problemas de tu institución.'
+      }}
+    </p>
+  </div>
+
+  @if (vista !== 'personas') {
+    <button class="primary" (click)="nuevo()">+ Nuevo reporte</button>
+  }
+</section>
+
+@if (error()) {
+  <div class="alert error" role="alert">
+    {{ error() }}
+    <button (click)="cargar()">Reintentar conexión</button>
+  </div>
+}
+
+@if (aviso()) {
+  <div class="alert success" role="status">
+    ✓ {{ aviso() }}
+    <button aria-label="Cerrar aviso" (click)="aviso.set('')">×</button>
+  </div>
+}
+
+@if (cargando()) {
+  <div class="loading">Cargando información del campus…</div>
+}
+
+@if (vista === 'personas') {
+  <div class="people-layout">
+    <section class="card">
+      <div class="card-title">
+        <h2>Registrar persona</h2>
+        <span>REPORTANTES</span>
+      </div>
+
+      <form #pf="ngForm" (ngSubmit)="crearPersona()" class="person-form">
+        <label>
+          Nombre completo
+
+          <input
+            name="nombre"
+            [(ngModel)]="nombre"
+            required
+            maxlength="120"
+            pattern=".*\S.*"
+            placeholder="Ej. Carlos López"
+          />
+        </label>
+
+        <label>
+          Correo electrónico
+
+          <input
+            name="correo"
+            [(ngModel)]="correo"
+            type="email"
+            email
+            required
+            maxlength="254"
+            placeholder="carlos@institucion.edu"
+          />
+        </label>
+
+        <button class="primary" [disabled]="pf.invalid || ocupado()">
+          {{ ocupado() ? 'Guardando…' : 'Registrar persona' }}
+        </button>
+
+        <p class="muted">
+          Este registro identifica al reportante; no crea una cuenta de acceso.
+        </p>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="card-title">
+        <h2>Directorio</h2>
+        <span>{{ personas().length }} PERSONAS</span>
+      </div>
+
+      @for (p of personas(); track p.id) {
+        <div class="person-row">
+          <span class="avatar">{{ p.nombre.charAt(0) }}</span>
+
+          <div>
+            <strong>{{ p.nombre }}</strong>
+            <small>{{ p.correo }}</small>
+          </div>
+        </div>
+      } @empty {
+        <div class="empty">Todavía no hay personas registradas.</div>
+      }
+    </section>
+  </div>
+} @else {
+  <div class="kpis">
+    <article class="kpi">
+      <span>Total de reportes <i>▤</i></span>
+      <strong>{{ reportes().length }}</strong>
+      <small>Registro de incidencias</small>
+    </article>
+
+    <article class="kpi">
+      <span>Por resolver <i>◷</i></span>
+      <strong>{{ abiertos() }}</strong>
+      <small>Requieren seguimiento</small>
+    </article>
+
+    <article class="kpi">
+      <span>Prioridad alta o crítica <i class="red">!</i></span>
+      <strong>{{ urgentes() }}</strong>
+      <small>Abiertos de atención prioritaria</small>
+    </article>
+
+    <article class="kpi">
+      <span>Solucionados <i class="green">✓</i></span>
+      <strong>{{ resueltos() }}</strong>
+      <small>Ciclo de atención completado</small>
+    </article>
+  </div>
+
+  @if (vista === 'panel') {
+    <section class="overview">
+      <div>
+        <span class="eyebrow">TRAZABILIDAD COMPLETA</span>
+
+        <h2>
+          Un proceso claro.<br />
+          Un campus mejor.
+        </h2>
+
+        <p>
+          Cada reporte recorre las cuatro etapas.<br />
+          Sin saltos, con un historial verificable.
+        </p>
+      </div>
+
+      <div class="progress-states">
+        @for (e of pasos; track e) {
+          <div>
+            <span class="step-number">0{{ e }}</span>
+            <strong>{{ estados[e] }}</strong>
+
+            <small>
+              {{ reportes().length ? grupo(e).length : 0 }} reportes en la vista
+            </small>
+          </div>
+        }
+      </div>
+    </section>
+  }
+
+  <section class="card">
+    <div class="card-title">
+      <h2>
+        {{ vista === 'tablero' ? 'Flujo de atención' : 'Reportes del campus' }}
+      </h2>
+
+      <span>{{ filtrados().length }} RESULTADOS</span>
+    </div>
+
+    <div class="filters">
+      <label class="search">
+        <span>⌕</span>
+
+        <input
+          aria-label="Buscar reportes"
+          placeholder="Buscar por problema, aula, persona o ID…"
+          [ngModel]="buscar()"
+          (ngModelChange)="buscar.set($event)"
+        />
+      </label>
+
+      <select
+        aria-label="Filtrar por estado"
+        [ngModel]="estado()"
+        (ngModelChange)="estado.set(+$event)"
+      >
+        <option [ngValue]="0">Todos los estados</option>
+
+        @for (e of pasos; track e) {
+          <option [ngValue]="e">{{ estados[e] }}</option>
+        }
+      </select>
+
+      <select
+        aria-label="Filtrar por prioridad"
+        [ngModel]="prioridad()"
+        (ngModelChange)="prioridad.set(+$event)"
+      >
+        <option [ngValue]="0">Todas las prioridades</option>
+
+        @for (e of pasos; track e) {
+          <option [ngValue]="e">{{ prioridades[e] }}</option>
+        }
+      </select>
+    </div>
+
+    @if (vista === 'tablero') {
+      <div class="kanban">
+        @for (e of pasos; track e) {
+          <section class="kanban-column">
+            <h3>
+              <app-estado [valor]="e" />
+              <span>{{ grupo(e).length }}</span>
+            </h3>
+
+            @for (r of grupo(e); track r.id) {
+              <button
+                class="ticket-card"
+                (click)="abrirDetalle(r)"
+              >
+                <small>
+                  CF-{{ r.id.toString().padStart(4, '0') }}
+                </small>
+
+                <strong>{{ r.problema }}</strong>
+                <span>{{ r.ubicacion }}</span>
+
+                <div>
+                  <span [class]="'priority p-' + r.prioridad">
+                    {{ prioridades[r.prioridad] }}
+                  </span>
+
+                  <span class="avatar">
+                    {{ r.reportadoPor.charAt(0) }}
+                  </span>
+                </div>
+              </button>
+            } @empty {
+              <p class="column-empty">Sin reportes en esta etapa</p>
+            }
+          </section>
+        }
+      </div>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>REPORTE</th>
+              <th>UBICACIÓN</th>
+              <th>PRIORIDAD</th>
+              <th>ESTADO</th>
+              <th>REPORTADO POR</th>
+              <th>FECHA</th>
+              <th></th>
+            </tr>
+          </thead>
+
+          <tbody>
+            @for (r of filtrados(); track r.id) {
+              <tr>
+                <td>
+                  <small class="ticket-id">
+                    CF-{{ r.id.toString().padStart(4, '0') }}
+                  </small>
+
+                  <button
+                    class="title-link"
+                    (click)="abrirDetalle(r)"
+                  >
+                    {{ r.problema }}
+                  </button>
+                </td>
+
+                <td>{{ r.ubicacion }}</td>
+
+                <td>
+                  <span [class]="'priority p-' + r.prioridad">
+                    {{ prioridades[r.prioridad] }}
+                  </span>
+                </td>
+
+                <td>
+                  <app-estado [valor]="r.estado" />
+                </td>
+
+                <td>{{ r.reportadoPor }}</td>
+
+                <td class="date">
+                  {{ r.fechaReporte | date: 'dd MMM yyyy' }}
+                </td>
+
+                <td>
+                  <button
+                    class="icon-button"
+                    (click)="abrirDetalle(r)"
+                    aria-label="Ver detalle"
+                  >
+                    ↗
+                  </button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7">
+                  <div class="empty">
+                    <span>▤</span>
+
+                    <h3>
+                      {{
+                        reportes().length
+                          ? 'No hay coincidencias'
+                          : 'Todo empieza con un reporte'
+                      }}
+                    </h3>
+
+                    <p>
+                      {{
+                        reportes().length
+                          ? 'Prueba con otros filtros de búsqueda.'
+                          : 'Registra una persona y crea la primera incidencia del campus.'
+                      }}
+                    </p>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    <div class="table-footer">
+      {{ filtrados().length }} de {{ reportes().length }} reportes
+
+      <span>
+        Datos de PostgreSQL ·
+        <button class="text-button" (click)="cargar()">
+          Actualizar
+        </button>
+      </span>
+    </div>
+  </section>
+}
+
+@if (modal()) {
+  <div class="overlay" (click)="cerrar()">
+    <section
+      class="dialog"
+      role="dialog"
+      appDialogFocus
+      (keydown.escape)="cerrar()"
+      aria-modal="true"
+      aria-labelledby="form-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="dialog-head">
+        <div>
+          <span class="eyebrow">GESTIÓN DE INCIDENCIAS</span>
+
+          <h2 id="form-title">
+            {{ editarId ? 'Editar reporte' : 'Nuevo reporte' }}
+          </h2>
+        </div>
+
+        <button
+          class="icon-button"
+          aria-label="Cerrar"
+          [disabled]="ocupado()"
+          (click)="cerrar()"
+        >
+          ×
+        </button>
+      </div>
+
+      <form #rf="ngForm" (ngSubmit)="guardar()">
+        <div class="form-body">
+          @if (error()) {
+            <div class="alert error" role="alert">
+              {{ error() }}
+            </div>
+          }
+
+          <label>
+            ¿Qué problema encontraste?
+
+            <input
+              autofocus
+              name="problema"
+              [(ngModel)]="form.problema"
+              required
+              maxlength="160"
+              pattern=".*\S.*"
+              placeholder="Ej. El proyector no funciona"
+            />
+          </label>
+
+          <div class="form-grid">
+            <label>
+              Ubicación
+
+              <input
+                name="ubicacion"
+                [(ngModel)]="form.ubicacion"
+                required
+                maxlength="120"
+                pattern=".*\S.*"
+                placeholder="Ej. Aula 204"
+              />
+            </label>
+
+            <label>
+              Prioridad
+
+              <select
+                name="prioridad"
+                [(ngModel)]="form.prioridad"
+              >
+                @for (p of pasos; track p) {
+                  <option [ngValue]="p">
+                    {{ prioridades[p] }}
+                  </option>
+                }
+              </select>
+            </label>
+          </div>
+
+          <label>
+            Reportado por
+
+            <select
+              name="reportante"
+              [(ngModel)]="form.reportadoPorId"
+              required
+            >
+              <option [ngValue]="0" disabled>
+                Selecciona una persona
+              </option>
+
+              @for (p of personas(); track p.id) {
+                <option [ngValue]="p.id">
+                  {{ p.nombre }} · {{ p.correo }}
+                </option>
+              }
+            </select>
+          </label>
+
+          @if (!personas().length) {
+            <p class="hint">
+              Primero registra una persona desde la sección Personas.
+            </p>
+          }
+
+          <label>
+            Descripción
+            <span class="muted">(opcional)</span>
+
+            <textarea
+              name="descripcion"
+              [(ngModel)]="form.descripcion"
+              maxlength="4000"
+              rows="4"
+              placeholder="Agrega detalles que ayuden a resolver el problema…"
+            ></textarea>
+          </label>
+
+          <p class="hint">
+            {{
+              editarId
+                ? 'El estado se modifica desde el detalle del reporte.'
+                : 'El reporte comenzará en estado Reportado.'
+            }}
+          </p>
+        </div>
+
+        <div class="dialog-actions">
+          <button
+            type="button"
+            class="secondary"
+            [disabled]="ocupado()"
+            (click)="cerrar()"
+          >
+            Cancelar
+          </button>
+
+          <button
+            class="primary"
+            [disabled]="
+              rf.invalid ||
+              !form.reportadoPorId ||
+              ocupado()
+            "
+          >
+            {{ ocupado() ? 'Guardando…' : 'Guardar reporte' }}
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
+}
+
+@if (detalle(); as r) {
+  <div class="overlay" (click)="cerrar()">
+    <section
+      class="dialog detail"
+      role="dialog"
+      appDialogFocus
+      (keydown.escape)="cerrar()"
+      aria-modal="true"
+      aria-labelledby="detail-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="dialog-head">
+        <div>
+          <span class="eyebrow">
+            CF-{{ r.id.toString().padStart(4, '0') }}
+          </span>
+
+          <h2 id="detail-title">
+            {{ r.problema }}
+          </h2>
+        </div>
+
+        <button
+          class="icon-button"
+          aria-label="Cerrar"
+          [disabled]="ocupado()"
+          (click)="cerrar()"
+        >
+          ×
+        </button>
+      </div>
+
+      <div class="form-body">
+        @if (error()) {
+          <div class="alert error">
+            {{ error() }}
+          </div>
+        }
+
+        <div class="detail-meta">
+          <app-estado [valor]="r.estado" />
+
+          <span [class]="'priority p-' + r.prioridad">
+            Prioridad {{ prioridades[r.prioridad] }}
+          </span>
+        </div>
+
+        <div class="form-grid info">
+          <div>
+            <small>UBICACIÓN</small>
+            <strong>{{ r.ubicacion }}</strong>
+          </div>
+
+          <div>
+            <small>REPORTADO POR</small>
+            <strong>{{ r.reportadoPor }}</strong>
+          </div>
+        </div>
+
+        <p class="description">
+          {{ r.descripcion || 'Sin descripción adicional.' }}
+        </p>
+
+        <h3>Recorrido del reporte</h3>
+
+        <div class="track">
+          @for (e of pasos; track e) {
+            <div [class.done]="r.estado >= e">
+              <span>
+                {{ r.estado >= e ? '✓' : e }}
+              </span>
+
+              <small>{{ estados[e] }}</small>
+            </div>
+          }
+        </div>
+
+        <h3>Historial de actividad</h3>
+
+        <div class="history">
+          <div>
+            <span class="history-dot"></span>
+
+            <div>
+              <strong>Reporte creado</strong>
+
+              <small>
+                {{ r.fechaReporte | date: 'dd/MM/yyyy, HH:mm' }}
+              </small>
+            </div>
+          </div>
+
+          @for (h of r.historial; track h.id) {
+            <div>
+              <span class="history-dot"></span>
+
+              <div>
+                <strong>
+                  {{ estados[h.estadoAnterior] }}
+                  →
+                  {{ estados[h.estadoNuevo] }}
+                </strong>
+
+                <small>
+                  {{ h.fechaCambio | date: 'dd/MM/yyyy, HH:mm' }}
+                </small>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- =====================================================
+             SOLUCIÓN DOCUMENTADA
+             Se muestra al llegar al estado Solucionado.
+             ===================================================== -->
+        @if (r.estado === 4) {
+          <div
+            style="
+              margin-top: 26px;
+              padding: 20px;
+              border: 1px solid #dfe5ec;
+              border-radius: 12px;
+              background: #f8fafc;
+            "
+          >
+            <div
+              style="
+                display: flex;
+                align-items: flex-start;
+                justify-content: space-between;
+                gap: 16px;
+                margin-bottom: 14px;
+              "
+            >
+              <div>
+                <span class="eyebrow">CIERRE DEL INCIDENTE</span>
+
+                <h3 style="margin: 4px 0 0">
+                  Solución documentada
+                </h3>
+              </div>
+
+              @if (r.fechaSolucion) {
+                <span
+                  style="
+                    font-size: 12px;
+                    color: #64748b;
+                    white-space: nowrap;
+                  "
+                >
+                  {{ r.fechaSolucion | date: 'dd/MM/yyyy, HH:mm' }}
+                </span>
+              }
+            </div>
+
+            <p
+              class="muted"
+              style="
+                margin-top: 0;
+                margin-bottom: 16px;
+              "
+            >
+              Registra qué acción permitió resolver esta incidencia.
+              Esta información podrá reutilizarse posteriormente en
+              CampusFix Knowledge.
+            </p>
+
+            @if (r.solucion) {
+              <div
+                style="
+                  margin-bottom: 16px;
+                  padding: 14px 16px;
+                  border-left: 4px solid #16a34a;
+                  border-radius: 8px;
+                  background: #ffffff;
+                "
+              >
+                <small
+                  style="
+                    display: block;
+                    margin-bottom: 6px;
+                    font-weight: 700;
+                    color: #64748b;
+                  "
+                >
+                  SOLUCIÓN REGISTRADA
+                </small>
+
+                <div style="white-space: pre-wrap">
+                  {{ r.solucion }}
+                </div>
+              </div>
+            }
+
+            <label>
+              {{
+                r.solucion
+                  ? 'Actualizar solución'
+                  : '¿Cómo se resolvió?'
+              }}
+
+              <textarea
+                name="solucion"
+                [(ngModel)]="solucion"
+                maxlength="4000"
+                rows="5"
+                placeholder="Ej. Se reemplazó el cable HDMI defectuoso y se verificó el funcionamiento correcto del proyector."
+              ></textarea>
+            </label>
+
+            <div
+              style="
+                display: flex;
+                justify-content: flex-end;
+                margin-top: 12px;
+              "
+            >
+              <button
+                type="button"
+                class="primary"
+                [disabled]="ocupado() || !solucion.trim()"
+                (click)="registrarSolucion(r)"
+              >
+                {{
+                  ocupado()
+                    ? 'Guardando…'
+                    : r.solucion
+                      ? 'Actualizar solución'
+                      : 'Guardar solución'
+                }}
+              </button>
+            </div>
+          </div>
+        }
+
+        <small class="muted">
+          Última actualización:
+          {{ r.fechaActualizacion | date: 'dd/MM/yyyy, HH:mm' }}
+        </small>
+      </div>
+
+      <div class="dialog-actions">
+        <button
+          type="button"
+          class="secondary"
+          [disabled]="ocupado()"
+          (click)="archivar(r)"
+        >
+          Archivar reporte
+        </button>
+
+        <button
+          type="button"
+          class="secondary"
+          [disabled]="ocupado()"
+          (click)="editar(r)"
+        >
+          Editar datos
+        </button>
+
+        @if (r.estado < 4) {
+          <button
+            type="button"
+            class="primary"
+            [disabled]="ocupado()"
+            (click)="avanzar(r)"
+          >
+            {{
+              ocupado()
+                ? 'Actualizando…'
+                : 'Pasar a ' + estados[r.estado + 1] + ' →'
+            }}
+          </button>
+        } @else {
+          <span class="resolved">
+            ✓ Incidencia solucionada
+          </span>
+        }
+      </div>
+    </section>
+  </div>
+}
