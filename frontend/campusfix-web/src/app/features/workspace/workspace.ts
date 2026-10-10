@@ -72,6 +72,7 @@ export class Workspace implements OnDestroy{
  newArticle(a?:any,fromTicket=false){this.form=a?structuredClone(a):{title:fromTicket?this.selected().problema:'',body:fromTicket?this.selected().solucion:'',sourceTicketId:fromTicket?this.selected().id:'',keywords:'',status:'Borrador',visibility:this.auth.can('internos')?'interno':'usuarios',serviceId:fromTicket?this.selected().serviceId:''};this.modal.set('article-form');}
  saveArticle(){void this.action(async()=>{await this.call('POST','/api/articles',{...this.form,version:this.form._v});this.modal.set('');await this.load();});}
  openArticle(a:any){this.selected.set(a);this.articleVoteTicket='';this.modal.set('article-detail');}
+ canEditArticle(a:any){return this.auth.can('gestionarConocimiento')&&(['Administrador','Superadministrador'].includes(this.auth.user()?.role)||!['Publicado','Archivado'].includes(a.status));}
  shownArticles(){return this.articles().filter((a:any)=>(!this.articleStatus||a.status===this.articleStatus)&&(!this.articleService||a.serviceId===this.articleService));}
  vote(helpful:boolean){void this.action(()=>this.call('POST','/api/votes',{articleId:this.selected().id,helpful,ticketId:this.articleVoteTicket}),'Tu valoración quedó registrada.');}
  markNotification(n?:any){void this.action(async()=>{await this.call('PUT','/api/notifications',n?{id:n.id,read:!n.read}:{all:true});await this.load();});}

@@ -26,4 +26,13 @@ No se ejecutaron push, despliegues ni operaciones sobre Supabase. El informe DOC
 
 ## Siguiente etapa
 
-Etapa 3: administración y superadministración; después integración y regresión final.
+Etapa 4: integración HTTP, despliegue y regresión final.
+
+## Etapa 3 — Administración: verificada localmente
+
+- Editor de conocimiento: ocultar edición de publicaciones/archivados a técnicos, como exige el servidor; conservar edición de borradores e historial. Valoración visible solo con permiso conocimiento.
+- Archivos: `workspace.ts/html/spec.ts`, `tests/CampusFix.Checks/Program.cs`.
+- Verificación: compilación Angular y backend correcta; 27 pruebas de Workspace e indicadores; 62 comprobaciones PostgreSQL. Incluyen gestión de solicitantes, alta de técnico por propietario, cuentas protegidas, configuración, analítica restringida, publicaciones y conflictos de versión. No se cambiaron permisos existentes que ya funcionaban.
+- Punto estable anterior `3b12b8c`; commit de etapa: `git log -1 --format=%h --grep="fix: alinear acciones de conocimiento con permisos"`.
+- QA-15: áreas/equipo/informes comparten deliberadamente el permiso analítica en menú y rutas. No se inventaron permisos nuevos sin requisito de producto.
+- Pendiente: correo real y recorridos de producción; no ejecutados.
