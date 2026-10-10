@@ -10,6 +10,7 @@ public partial class CampusService
     internal async Task<JsonObject> ProvisionInstitution(JsonArray credentials)
     {
         var people=await s.All("users");u=people.First(x=>x.S("role")=="Superadministrador"&&x.B("activo"));p=Defaults("Superadministrador");
+        var syntheticIds=people.Where(x=>x.S("syntheticOrigin")==ProvisionBatch).Select(x=>x.S("id")).ToHashSet();foreach(var ticket in (await s.All("tickets")).Where(t=>t.S("syntheticOrigin")==""&&syntheticIds.Contains(t.S("reportadoPorId")))){ticket["syntheticOrigin"]=ProvisionBatch;await s.Save("tickets",ticket);}
         var owner=u.Copy();var areas=(await s.All("config")).Where(c=>c.S("kind")=="areas"&&c.B("activo")).OrderBy(c=>c.S("id")).ToList();
         Require(areas.Count>0,400,"No hay áreas institucionales activas.");var report=new JsonArray();
         string Key(string area,string part)=>"local-"+Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(area))).ToLowerInvariant()[..12]+"-"+part;
@@ -61,16 +62,35 @@ public partial class CampusService
             for(var i=0;i<5;i++){
                 var belonging=areas[(a+i+1)%areas.Count].S("id");var person=await Person(Key(aid,"solicitante"+i)+"@campusfix.example",firstNames[(a+i)%8]+" "+lastNames[(a*3+i)%8]+" "+lastNames[(a+i+2)%8],"Solicitante",belonging);requesterIds.Add(person.S("id"));
                 var marker=Key(aid,"ticket"+i);var previous=await s.Get("provisioning",marker);
-                if(previous!=null){Require(await s.Get("tickets",previous.S("ticketId"))!=null,409,"Solicitud del lote ausente; no se recrea automáticamente.");ticketIds.Add(previous.S("ticketId"));continue;}
+                if(previous!=null){
+                    var saved=await s.Get("tickets",previous.S("ticketId"));Require(saved!=null,409,"Solicitud del lote ausente; no se recrea automáticamente.");
+                    var title=ServiceTitle(name,saved!.S("serviceNombre"),i);
+                    // Correct only untouched synthetic initial content; never rewrite authentic history.
+                    if(saved.S("syntheticOrigin")==ProvisionBatch&&saved.I("estado")==1&&saved.S("tecnicoId")==""&&saved.A("messages").Count==0&&saved.S("problema")!=title){
+                        saved["problema"]=title;saved["descripcion"]="Solicito apoyo de "+name+" para "+title.ToLowerInvariant()+". Agradezco información sobre el procedimiento y los próximos pasos.";await s.Save("tickets",saved);
+                        foreach(var notice in (await s.All("notifications")).Where(n=>n.S("ticketId")==saved.S("id")&&n.S("eventType")=="created")){notice["title"]=$"Nuevo reporte CF-{saved.S("id").PadLeft(4,'0')}: {title}";await s.Save("notifications",notice);}
+                    }
+                    ticketIds.Add(previous.S("ticketId"));continue;
+                }
                 var service=services[i%services.Count];var category=categories.First(c=>c.S("serviceId")==service.S("id"));var custom=new JsonObject();
                 foreach(var field in service.A("fields").Items().Where(f=>!f.B("internal")))custom[field.S("id")]=field.S("type")=="select"?field.A("options").FirstOrDefault()?.ToString()??"":field.S("type")=="number"?"1":"Información de "+service.S("nombre");
-                var topics=Topics(name);u=person;p=await Effective(s,u);var ticket=(JsonObject)await CreateTicket(Obj(new{problema=topics[i],ubicacion="Atención en línea",descripcion="Solicito apoyo de "+name+" para "+topics[i].ToLowerInvariant()+". Agradezco información sobre el procedimiento, los horarios disponibles y los próximos pasos.",prioridad=2,areaId=belonging,attentionAreaId=aid,serviceId=service.S("id"),categoryId=category.S("id"),custom}));
+                var subject=ServiceTitle(name,service.S("nombre"),i);u=person;p=await Effective(s,u);var ticket=(JsonObject)await CreateTicket(Obj(new{problema=subject,ubicacion="Atención en línea",descripcion="Solicito apoyo de "+name+" para "+subject.ToLowerInvariant()+". Agradezco información sobre el procedimiento, los horarios disponibles y los próximos pasos.",prioridad=2,areaId=belonging,attentionAreaId=aid,serviceId=service.S("id"),categoryId=category.S("id"),custom}));
                 ticket["syntheticOrigin"]=ProvisionBatch;ticket["provisionKey"]=marker;await s.Save("tickets",ticket);ticketIds.Add(ticket.S("id"));
                 await s.Save("provisioning",Obj(new{id=marker,batch=ProvisionBatch,areaId=aid,ticketId=ticket.S("id"),requesterId=person.S("id")}));u=owner.Copy();p=Defaults("Superadministrador");
             }
             report.Add(Obj(new{areaId=aid,area=name,administratorIds=managers.Select(m=>m.S("id")).ToArray(),teamId=team.S("id"),responsibleId=technician.S("id"),serviceIds=services.Select(c=>c.S("id")).ToArray(),categoryIds=categories.Select(c=>c.S("id")).ToArray(),calendarId=calendar.S("id"),requesterIds,ticketIds}));
         }
         return Obj(new{batch=ProvisionBatch,areas=report});
+    }
+    static string ServiceTitle(string area,string service,int i)
+    {
+        if(service.Contains("Plataformas",StringComparison.OrdinalIgnoreCase))return new[]{"Acceso al aula virtual desde equipo institucional","Consulta sobre ingreso a plataforma académica","Asistencia con materiales del aula virtual","Seguimiento de acceso a curso en línea","Orientación sobre uso de plataforma académica"}[i];
+        if(service.Contains("accesos",StringComparison.OrdinalIgnoreCase))return new[]{"Orientación para recuperar acceso institucional","Recuperación de cuenta institucional bloqueada","Consulta sobre cambio de contraseña institucional","Asistencia con validación de acceso a la cuenta","Seguimiento de recuperación de credenciales"}[i];
+        if(service.Contains("Soporte tecnol",StringComparison.OrdinalIgnoreCase))return new[]{"Computador de consulta no inicia correctamente","Teclado de equipo institucional sin respuesta","Pantalla de estación de trabajo sin imagen","Revisión de periféricos en sala de estudio","Asistencia con conexión de monitor externo"}[i];
+        if(service.Contains("Orientación estudiantil",StringComparison.OrdinalIgnoreCase))return new[]{"Solicitud de orientación sobre planificación académica","Consulta de horarios de orientación académica","Orientación sobre organización de carga académica","Acompañamiento para adaptación a la vida universitaria","Seguimiento de orientación académica"}[i];
+        if(service.Contains("Actividades de bienestar",StringComparison.OrdinalIgnoreCase))return new[]{"Información sobre actividades de integración","Consulta de horarios de acompañamiento grupal","Inscripción a taller de habilidades de estudio","Información sobre programas de bienestar","Seguimiento de inscripción a actividad estudiantil"}[i];
+        if(service.Contains("Apoyo estudiantil",StringComparison.OrdinalIgnoreCase))return new[]{"Consulta sobre recursos de apoyo estudiantil","Información de beneficios para estudiantes","Orientación sobre servicios de apoyo universitario","Consulta de horarios de atención de beneficios","Seguimiento a solicitud de apoyo estudiantil"}[i];
+        return Topics(area)[i];
     }
     static string[] Topics(string area)
     {
