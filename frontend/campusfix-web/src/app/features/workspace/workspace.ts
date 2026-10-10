@@ -98,6 +98,7 @@ export class Workspace implements OnDestroy{
  saveConfig(){void this.action(async()=>{await this.call('POST','/api/config',{...this.form,version:this.form._v});this.modal.set('');await this.load();});}
  template(){void this.action(async()=>{await this.call('POST','/api/config/template');await this.load();},'Plantilla universitaria cargada. Puedes personalizarla.');}
  configTitle(){return this.kinds.find(x=>x[0]===this.configKind())?.[1];}
+ knowledgeServices(){return this.configs('servicios',false).filter((c:any)=>this.auth.user()?.role==='Superadministrador'||(this.data().knowledgeAreaIds||[]).includes(c.responsibleAreaId));}
  newArticle(a?:any,fromTicket=false){this.form=a?structuredClone(a):{title:fromTicket?this.selected().problema:'',body:fromTicket?this.selected().solucion:'',sourceTicketId:fromTicket?this.selected().id:'',keywords:'',status:'Borrador',visibility:this.auth.can('internos')?'interno':'usuarios',serviceId:fromTicket?this.selected().serviceId:''};this.modalBaseline=JSON.stringify(this.form);this.modal.set('article-form');}
  saveArticle(){void this.action(async()=>{await this.call('POST','/api/articles',{...this.form,version:this.form._v});this.modal.set('');await this.load();});}
  openArticle(a:any){this.selected.set(a);this.articleVoteTicket='';this.modal.set('article-detail');}
