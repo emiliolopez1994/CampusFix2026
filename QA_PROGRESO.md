@@ -26,7 +26,7 @@ No se ejecutaron push, despliegues ni operaciones sobre Supabase. El informe DOC
 
 ## Siguiente etapa
 
-Etapa 4: integración HTTP, despliegue y regresión final.
+Etapa 5: regresión final. Instrucciones reproducibles y límites en `docs/QA_LOCAL.md`.
 
 ## Etapa 3 — Administración: verificada localmente
 
@@ -36,3 +36,12 @@ Etapa 4: integración HTTP, despliegue y regresión final.
 - Punto estable anterior `3b12b8c`; commit de etapa: `git log -1 --format=%h --grep="fix: alinear acciones de conocimiento con permisos"`.
 - QA-15: áreas/equipo/informes comparten deliberadamente el permiso analítica en menú y rutas. No se inventaron permisos nuevos sin requisito de producto.
 - Pendiente: correo real y recorridos de producción; no ejecutados.
+
+## Etapa 4 — Integración: verificada localmente
+
+- Añadido modo `--http` que inicia API real con puerto/clave efímeros y base local vacía; comprueba middleware, controladores, transacciones y PostgreSQL. Restricción preventiva de pruebas PostgreSQL a localhost y nombres `campusfix_qa*`.
+- Archivos: `tests/CampusFix.Checks/Program.cs`, `QaHttpApi.cs`, `docs/QA_LOCAL.md`.
+- Verificación: 66 comprobaciones HTTP + PostgreSQL correctas; backend recompilado. Compilación Angular vigente de etapa 3 (sin cambios frontend en esta etapa).
+- Lectura pública: login Vercel 200; health por Vercel y Render 200/Conectado. No se efectuaron POST autenticados en producción.
+- Vercel rewrites, Docker/Render, proxy de desarrollo y JWT revisados. No se requieren cambios de configuración detectados; el arreglo SQL sigue pendiente de despliegue autorizado.
+- Punto estable anterior `db8c27b`; commit de etapa: `git log -1 --format=%h --grep="test: verificar API real con PostgreSQL aislado"`.

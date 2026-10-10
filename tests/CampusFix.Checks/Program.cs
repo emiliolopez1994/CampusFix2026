@@ -12,17 +12,20 @@ using System.IdentityModel.Tokens.Jwt;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using static CampusFix.Api.Services.J;
-var pg=args.Contains("--postgres");
+var httpMode=args.Contains("--http");var pg=args.Contains("--postgres")||httpMode;
 var testConnection=Environment.GetEnvironmentVariable("CAMPUSFIX_TEST_POSTGRES");
 if(pg&&string.IsNullOrWhiteSpace(testConnection))throw new Exception("CAMPUSFIX_TEST_POSTGRES debe apuntar a una base de pruebas vacía.");
+if(pg){var c=new Npgsql.NpgsqlConnectionStringBuilder(testConnection);if(c.Host is not "127.0.0.1" and not "localhost"||c.Database?.StartsWith("campusfix_qa",StringComparison.Ordinal)!=true)throw new Exception("Por seguridad QA solo admite localhost y bases cuyo nombre empieza con campusfix_qa.");}
 await using var db=pg?new CampusFixDbContext(new DbContextOptionsBuilder<CampusFixDbContext>().UseNpgsql(testConnection!).Options):null;
 if(db!=null){await db.Database.MigrateAsync();if(await db.Users.AnyAsync()||await db.Documentos.AnyAsync())throw new Exception("La base de pruebas debe estar vacía. No se modificaron datos.");}
-await using var transaction=db!=null?await db.Database.BeginTransactionAsync():null;
+await using var transaction=db!=null&&!httpMode?await db.Database.BeginTransactionAsync():null;
 IStore store=db==null?new MemoryStore():new Store(db);var hasher=new PasswordHasher<Usuario>();var key=Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(64));var configuration=new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string,string?>{{"Jwt:Key",key},{"Mail:EncryptionKey",key}}).Build();int checks=0;
+await using var api=httpMode?await QaHttpApi.Start(testConnection!,key):null;
+var tokens=new Dictionary<ClaimsPrincipal,string>();
 void Assert(bool ok,string message){if(!ok)throw new Exception("FAIL: "+message);checks++;Console.WriteLine("PASS "+message);}
-async Task<JsonNode> Call(string path,string method="GET",JsonObject? b=null,ClaimsPrincipal? principal=null){var service=new CampusService(store,configuration,hasher,new NoNetwork());return JsonSerializer.SerializeToNode(await service.Run(path,method,b??new(),principal??new(),new QueryCollection()))!;}
+async Task<JsonNode> Call(string path,string method="GET",JsonObject? b=null,ClaimsPrincipal? principal=null){if(api!=null)return await api.Call(path,method,b,principal!=null?tokens.GetValueOrDefault(principal):null);var service=new CampusService(store,configuration,hasher,new NoNetwork());return JsonSerializer.SerializeToNode(await service.Run(path,method,b??new(),principal??new(),new QueryCollection()))!;}
 async Task Denied(int status,string path,string method,JsonObject b,ClaimsPrincipal principal,string label){try{await Call(path,method,b,principal);throw new Exception("Expected rejection: "+label);}catch(ApiError e){Assert(e.Status==status,label);}}
-ClaimsPrincipal Principal(JsonNode response)=>new JwtSecurityTokenHandler{MapInboundClaims=false}.ValidateToken(response.S("token"),new(){ValidateIssuer=true,ValidateAudience=true,ValidateLifetime=true,ValidateIssuerSigningKey=true,ValidIssuer="CampusFix.Api",ValidAudience="CampusFix.Angular",IssuerSigningKey=new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),ClockSkew=TimeSpan.Zero},out _);
+ClaimsPrincipal Principal(JsonNode response){var principal=new JwtSecurityTokenHandler{MapInboundClaims=false}.ValidateToken(response.S("token"),new(){ValidateIssuer=true,ValidateAudience=true,ValidateLifetime=true,ValidateIssuerSigningKey=true,ValidIssuer="CampusFix.Api",ValidAudience="CampusFix.Angular",IssuerSigningKey=new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),ClockSkew=TimeSpan.Zero},out _);tokens[principal]=response.S("token");return principal;}
 const string password="CampusClaveSegura123";
 foreach(var role in Permissions.Roles){var userId=role switch{"Superadministrador"=>"owner@example.edu","Administrador"=>"admin@example.edu","Técnico"=>"tech@example.edu",_=>"student@example.edu"};await store.Save("users",Obj(new{id=userId,correo=userId,nombre=role,role,activo=true,passwordHash=hasher.HashPassword(new Usuario(),password),stamp=Id(),areas=new[]{"area"},areaId="area"}));}
 async Task<ClaimsPrincipal> SignIn(string email)=>Principal(await Call("auth/login","POST",Obj(new{correo=email,password})));
@@ -96,7 +99,8 @@ await Call("auth/logout","POST",new(),tech);await Denied(401,"auth/me","GET",new
 for(int i=0;i<5;i++)await Denied(401,"auth/login","POST",Obj(new{correo="tech@example.edu",password="incorrecta"}),new(),"Failed login counted "+(i+1));await Denied(423,"auth/login","POST",Obj(new{correo="tech@example.edu",password}),new(),"Account locks after five failures");
 await Call($"reportes/{id}","DELETE",new(),admin);Assert((await Call("data",principal:admin)).A("tickets").Count==0&&(await store.Get("tickets",id))!.A("historial").Count>0,"Archive hides ticket and preserves its history");
 if(transaction!=null)await transaction.RollbackAsync();
-Console.WriteLine($"SUCCESS: {checks} checks. Storage: {(pg?"PostgreSQL; test data rolled back":"isolated memory; PostgreSQL NOT validated")}.");
+if(api!=null){await api.ProtocolChecks();checks+=4;}
+Console.WriteLine($"SUCCESS: {checks} checks. Storage: {(httpMode?"HTTP + PostgreSQL local disposable database; synthetic data retained":pg?"PostgreSQL; test data rolled back":"isolated memory; PostgreSQL NOT validated")}.");
 class NoNetwork:IHttpClientFactory {public HttpClient CreateClient(string name)=>throw new Exception("Network is forbidden in business checks");}
 class MemoryStore:IStore {
  readonly Dictionary<string,JsonObject> records=new();readonly Dictionary<string,long> sequences=new();public Dictionary<string,Archivo> Files=new();
