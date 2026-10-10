@@ -52,6 +52,11 @@ await Denied(403,$"reportes/{id}/estado","PATCH",Obj(new{estado=2,version=ticket
 await Denied(409,$"reportes/{id}/asignar","PUT",Obj(new{tecnicoId="tech@example.edu",version=0}),admin,"Stale update rejected");
 ticket=(await Call($"reportes/{id}/asignar","PUT",Obj(new{tecnicoId="tech@example.edu",version=ticket.I("_v")}),admin)).AsObject();
 Assert((await Call("data",principal:tech)).A("tickets").Count==1,"Assigned technician can see ticket");
+await store.Save("users",Obj(new{id="foreign-tech@example.edu",correo="foreign-tech@example.edu",nombre="Otro técnico",role="Técnico",activo=true,passwordHash=hasher.HashPassword(new Usuario(),password),stamp=Id()}));var foreignTech=await SignIn("foreign-tech@example.edu");
+await Denied(404,$"reportes/{id}","GET",new(),foreignTech,"Unassigned technician cannot access another ticket directly");
+foreach(var operation in new[]{("estado","PATCH"),("solucion","PUT"),("mensajes","POST")})await Denied(404,$"reportes/{id}/{operation.Item1}",operation.Item2,Obj(new{estado=2,solucion="Ajena",text="Ajeno",version=ticket.I("_v")}),foreignTech,"Unassigned technician rejected for "+operation.Item1);
+await Denied(403,$"reportes/{id}/asignar","PUT",Obj(new{tecnicoId="tech@example.edu",version=ticket.I("_v")}),tech,"Technician cannot change assignment");
+Assert(((JsonArray)await Call("notifications",principal:tech)).Items().Any(n=>n.S("ticketId")==id),"Assignment notification visible to assigned technician");
 await Denied(409,$"reportes/{id}/estado","PATCH",Obj(new{estado=3,version=ticket.I("_v")}),tech,"Skipping workflow state rejected");
 ticket=(await Call($"reportes/{id}/estado","PATCH",Obj(new{estado=2,version=ticket.I("_v")}),tech)).AsObject();
 ticket=(await Call($"reportes/{id}/mensajes","POST",Obj(new{text="Revisando conectores",@internal=true,version=ticket.I("_v")}),tech)).AsObject();

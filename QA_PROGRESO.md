@@ -16,6 +16,14 @@ No se ejecutaron push, despliegues ni operaciones sobre Supabase. El informe DOC
 - Último punto estable: commit de esta etapa, localizable con `git log -1 --format=%h --grep="fix: corregir creacion y formulario de tickets solicitante"`.
 - Pendiente externo: reproducción autenticada de producción y correlación con logs Render; no realizada porque no se deben crear datos reales. QA-01 está reproducido y corregido localmente, no desplegado.
 
+## Etapa 2 — Técnico: verificada localmente
+
+- Corregida pérdida de solución/respuesta/adjunto pendientes al enviar mensajes, cambiar estado o refrescar el detalle tras conflicto. Cada operación limpia únicamente su contenido enviado; refrescar conserva borradores y adopta la versión actual.
+- Archivos: `workspace.ts`, `workspace.spec.ts`, `tests/CampusFix.Checks/Program.cs`.
+- Verificación: compilación Angular y backend correcta; 22 pruebas Workspace; 51 comprobaciones PostgreSQL, incluyendo acceso directo ajeno denegado, estado/solución/mensajes ajenos denegados, prohibición de asignación y notificación al técnico asignado. Diagnóstico interno, flujo completo, solución y persistencia ya cubiertos.
+- Último commit estable anterior: `782fab4` (etapa 1). Punto estable de etapa 2: `git log -1 --format=%h --grep="fix: conservar borradores durante atencion tecnica"`.
+- Pendiente: recorrido visual autenticado de producción y entrega real de correo; no ejecutados.
+
 ## Siguiente etapa
 
-Etapa 2: verificar permisos del técnico sobre tickets ajenos, transiciones, diagnóstico, solución y notificaciones; aprovechar las pruebas de persistencia ya ejecutadas. Después administración, integración y regresión final.
+Etapa 3: administración y superadministración; después integración y regresión final.
