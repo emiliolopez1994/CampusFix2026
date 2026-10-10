@@ -18,7 +18,7 @@ foreach ($group in ($credentials | Sort-Object role, areaId, nombre | Group-Obje
     $lines.Add(''); $lines.Add('## ' + $group.Name); $lines.Add('')
     $lines.Add('| Área de pertenencia | Nombre | Correo de acceso | Contraseña inicial |')
     $lines.Add('|---|---|---|---|')
-    foreach ($account in $group.Group) { $lines.Add('| ' + (AreaName $account.areaId) + ' | ' + $account.nombre + ' | ' + $account.id + ' | ' + $account.password + ' |') }
+    foreach ($account in $group.Group) { $lines.Add('| ' + (AreaName $account.areaId) + ' | ' + $account.nombre + ' | ' + $(if ($account.correo) { $account.correo } else { $account.id }) + ' | ' + $account.password + ' |') }
 }
 $lines.Add(''); $lines.Add('## Cuentas existentes conservadas'); $lines.Add('')
 $lines.Add('Usar la contraseña actual. No se restablecieron las contraseñas existentes. La verificación manual de estas sesiones queda a cargo del usuario.')

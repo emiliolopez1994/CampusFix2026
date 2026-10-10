@@ -39,7 +39,7 @@ try {
   await page.getByRole('button',{name:'Registrarse',exact:true}).click();
   await page.locator('#access-name').fill('Solicitante QA navegador');
   await page.locator('input[name="correo"]').fill(`browser-${Date.now()}@example.edu`);
-  await page.locator('input[name="password"]').fill('SoloPruebasQA2026');
+  await page.locator('input[name="password"]').fill('SoloPruebasQA2026#');
   await page.locator('form button[type="submit"]').click();
   await page.waitForURL('**/panel');
   check('registro e inicio de sesión');

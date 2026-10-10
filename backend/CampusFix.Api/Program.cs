@@ -10,7 +10,7 @@ var builder=WebApplication.CreateBuilder(args);
 builder.WebHost.ConfigureKestrel(o=>o.Limits.MaxRequestBodySize=600000);
 var connection=builder.Configuration.GetConnectionString("CampusFix")??"Host=localhost;Port=5432;Database=campusfix;Username=campusfix";
 builder.Services.AddDbContext<CampusFixDbContext>(o=>o.UseNpgsql(connection));
-builder.Services.AddIdentityCore<Usuario>(o=>{o.Password.RequiredLength=12;o.Password.RequireDigit=true;o.Password.RequireUppercase=true;o.Password.RequireLowercase=true;o.Password.RequireNonAlphanumeric=false;o.Lockout.MaxFailedAccessAttempts=5;o.Lockout.DefaultLockoutTimeSpan=TimeSpan.FromMinutes(15);}).AddRoles<IdentityRole>().AddEntityFrameworkStores<CampusFixDbContext>();
+builder.Services.AddIdentityCore<Usuario>(o=>{o.Password.RequiredLength=12;o.Password.RequireDigit=true;o.Password.RequireUppercase=true;o.Password.RequireLowercase=true;o.Password.RequireNonAlphanumeric=true;o.Lockout.MaxFailedAccessAttempts=5;o.Lockout.DefaultLockoutTimeSpan=TimeSpan.FromMinutes(15);}).AddRoles<IdentityRole>().AddEntityFrameworkStores<CampusFixDbContext>();
 builder.Services.AddScoped<IStore,Store>();builder.Services.AddScoped<CampusService>();
 builder.Services.AddHttpClient("mail",c=>c.Timeout=TimeSpan.FromSeconds(20));
 var jwtKey=builder.Configuration["Jwt:Key"];

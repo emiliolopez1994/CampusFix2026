@@ -1,5 +1,13 @@
 # Progreso QA CampusFix
 
+## Credenciales académicas locales — 10-10-2026
+
+Actualizadas exclusivamente 52 cuentas sintéticas; IDs, perfiles, roles y relaciones conservados. Correos calculados desde la primera letra y segunda palabra, sin tildes, con sufijos mínimos para colisiones. Contraseña fija solicitada; excepción autorizada `Ade00123456#` en siete cuentas «Administración de …». Se mantienen 62 usuarios, cero correos duplicados y las diez filas originales intactas. Respaldo previo: `%LOCALAPPDATA%\CampusFix\integral-2026-10-10\antes-credenciales-20261010-172928.dump`. Listado privado: `ACCESOS_LOCALES_ACTUALIZADOS.md` en ese mismo directorio.
+
+Login ajustado para buscar correo sin cambiar ID; registro impide duplicados por correo e ID. Política de nuevas contraseñas: 12–128 caracteres, mayúscula, minúscula, número y especial; no invalida contraseñas originales al iniciar sesión. Aprovisionador reutiliza los IDs estables y sincroniza el correo actual en su listado, sin regenerar claves existentes. Script local ejecutado: `scripts/Actualizar-CredencialesLocales.py`; usa conexión PG* exclusivamente localhost/campusfix, respaldo y transacción. No se repitió el aprovisionamiento institucional.
+
+Verificación acotada: API compilada sin errores; login y auth/me reales de Administrador, Técnico y Solicitante correctos; contraseñas cortas/sin especial rechazadas y correo existente devuelve 409 sin crear usuario. Huellas completas de documentos (incluidos tickets, recursos, historial y notificaciones) y roles idénticas; únicamente se agregan sesiones de los accesos probados. No se repitió la regresión integral. API local ejecutándose con configuración Credenciales; Angular de desarrollo conserva su proceso. Sin producción, push ni despliegue.
+
 ## Especificación integral 10-10-2026 — implementación cerrada; aceptación manual del usuario
 
 QA-30/31/34/35/36/37 implementados; carga EJECUTADA en localhost:5432/campusfix con respaldo. 8 áreas × 5 solicitudes iniciales, 62 usuarios, 116 recursos, 68 tickets incluyendo uno adicional solucionado. Repetición sin duplicados y persistencia tras reiniciar. Regresión: 58 Angular, 98 negocio PostgreSQL, dos migraciones, 102 HTTP, 13 navegador multirrol y 8 instalación local. Accesos privados organizados y evidencia en docs/QA_INTEGRAL_2026-10-10.md e inventario adjunto. Commits 10e1f3c, 898aba3 y cierre local. El usuario asumió expresamente la verificación manual; las sesiones de cuentas existentes no se declaran probadas en la instalación principal. No repetir auditorías ya verificadas. Producción y etiqueta bc6022e intactas.

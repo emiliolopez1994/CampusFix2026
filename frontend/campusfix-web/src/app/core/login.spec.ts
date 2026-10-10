@@ -7,10 +7,10 @@ describe('Acceso CampusFix',()=>{
  localStorage.removeItem('campusfix-login-email');const login=vi.fn().mockResolvedValue(undefined);
  TestBed.configureTestingModule({providers:[{provide:Auth,useValue:{login,registrationAreas:vi.fn().mockResolvedValue([{id:'area',nombre:'Académica'}])}}]});
  const f=TestBed.createComponent(Login);f.detectChanges();await f.whenStable();
- const c=f.componentInstance;c.correo=' persona@institucion.edu ';c.password='MiClaveSegura123';c.remember=true;
- await c.submit();expect(login).toHaveBeenCalledWith({correo:'persona@institucion.edu',password:'MiClaveSegura123',nombre:''},false);
+ const c=f.componentInstance;c.correo=' persona@institucion.edu ';c.password='MiClaveSegura123#';c.remember=true;
+ await c.submit();expect(login).toHaveBeenCalledWith({correo:'persona@institucion.edu',password:'MiClaveSegura123#',nombre:''},false);
  expect(localStorage.getItem('campusfix-login-email')).toBe('persona@institucion.edu');
- c.changeMode(true);await f.whenStable();c.nombre='Persona';await c.submit();expect(c.error()).toContain('área');c.areaId='area';await c.submit();expect(login).toHaveBeenLastCalledWith({correo:'persona@institucion.edu',password:'MiClaveSegura123',nombre:'Persona',areaId:'area'},true);
+ c.changeMode(true);await f.whenStable();c.nombre='Persona';await c.submit();expect(c.error()).toContain('área');c.areaId='area';await c.submit();expect(login).toHaveBeenLastCalledWith({correo:'persona@institucion.edu',password:'MiClaveSegura123#',nombre:'Persona',areaId:'area'},true);
  localStorage.removeItem('campusfix-login-email');f.destroy();
  });
  it('muestra errores del acceso y permite navegar la presentación y recuperar ayuda',async()=>{

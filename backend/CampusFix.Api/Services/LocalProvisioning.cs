@@ -15,10 +15,10 @@ public partial class CampusService
         Require(areas.Count>0,400,"No hay áreas institucionales activas.");var report=new JsonArray();
         string Key(string area,string part)=>"local-"+Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(area))).ToLowerInvariant()[..12]+"-"+part;
         async Task<JsonObject> Person(string id,string name,string role,string area){
-            var existing=await s.Get("users",id);if(existing!=null){Require(existing.S("role")==role&&existing.B("activo"),409,"Cuenta del lote desactivada o con rol cambiado: "+id);return existing;}
+            var existing=await s.Get("users",id);if(existing!=null){Require(existing.S("role")==role&&existing.B("activo"),409,"Cuenta del lote desactivada o con rol cambiado: "+id);var access=credentials.Items().FirstOrDefault(c=>c.S("id")==id);if(access!=null)access["correo"]=existing.S("correo");return existing;}
             var password="Aa9!"+Convert.ToHexString(RandomNumberGenerator.GetBytes(18));
             var person=await s.Save("users",Obj(new{id,correo=id,nombre=name,role,activo=true,areaId=area,areas=new[]{area},operationalAreas=role=="Técnico"?new[]{area}:Array.Empty<string>(),passwordHash=Hash(password),stamp=Id(),mustChange=false,created=Now(),syntheticOrigin=ProvisionBatch}));
-            credentials.Add(Obj(new{id,nombre=name,role,areaId=area,password,policy="Acceso local inicial; cambio voluntario. Contraseña aleatoria exclusiva."}));return person;
+            credentials.Add(Obj(new{id,correo=id,nombre=name,role,areaId=area,password,policy="Acceso local inicial; cambio voluntario. Contraseña aleatoria exclusiva."}));return person;
         }
         async Task<JsonObject> Config(string stable,JsonObject body){
             var saved=await s.Get("provisioning",stable);if(saved!=null){var found=await s.Get("config",saved.S("resourceId"));Require(found!=null,409,"Recurso del lote ausente; requiere revisión.");return found!;}

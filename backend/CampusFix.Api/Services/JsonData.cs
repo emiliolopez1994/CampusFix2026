@@ -22,7 +22,7 @@ public static class J {
  public static void Require([System.Diagnostics.CodeAnalysis.DoesNotReturnIf(false)] bool c,int status,string message){if(!c)throw new ApiError(status,message);}
  public static string Required(JsonObject b,string key,string label,int max=160){var v=b.S(key).Trim();if(v.Length==0||v.Length>max)throw new ApiError(400,$"{label}: completa el campo (máximo {max} caracteres).",key);return v;}
  public static string Email(JsonObject b,string key="correo"){var s=Required(b,key,"Correo",254).ToLowerInvariant();Require(Regex.IsMatch(s,@"^[^\s@]+@[^\s@]+\.[^\s@]+$"),400,"Correo no válido.");return s;}
- public static string Password(JsonObject b,string key="password"){var s=b.S(key);Require(s.Length>=12&&s.Length<=128&&Regex.IsMatch(s,"[a-z]")&&Regex.IsMatch(s,"[A-Z]")&&Regex.IsMatch(s,"[0-9]"),400,"Usa de 12 a 128 caracteres, mayúsculas, minúsculas y números.");return s;}
+ public static string Password(JsonObject b,string key="password"){var s=b.S(key);Require(s.Length>=12&&s.Length<=128&&Regex.IsMatch(s,"[a-z]")&&Regex.IsMatch(s,"[A-Z]")&&Regex.IsMatch(s,"[0-9]")&&Regex.IsMatch(s,@"[^\p{L}\p{N}\s]"),400,"Usa de 12 a 128 caracteres, mayúsculas, minúsculas, números y un carácter especial.");return s;}
  public static void Version(JsonObject? old,JsonObject b){if(b.ContainsKey("version")&&b["version"]!=null)Require(old!=null&&b.I("version",-1)==old.I("_v"),409,"El registro cambió. Actualiza antes de guardar.");}
  public static JsonArray Strings(JsonNode? n,string name){Require(n is JsonArray a&&a.Count<=200&&a.All(v=>v is JsonValue j&&j.TryGetValue<string>(out _)),400,name+": selecciona una lista válida.");return new JsonArray(((JsonArray)n!).Select(v=>v!.ToString()).Distinct().Select(v=>(JsonNode?)JsonValue.Create(v)).ToArray());}
 }
