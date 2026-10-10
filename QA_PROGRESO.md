@@ -2,7 +2,7 @@
 
 ## Nueva fase de mejoras posteriores a QA manual
 
-Respaldo `respaldo-campusfix-qa-antes-mejoras` verificado en `bc6022e`, sin alterarlo. Diagnóstico y evidencias nuevas: `docs/QA_MEJORAS.md`. Fases 1–2 verificadas (72 checks PostgreSQL y 24 Workspace); siguiente: notificaciones y sincronización. Último punto anterior `f0e6e30`; fase 2 identificable por mensaje `feat: enrutar reportes y autorizar administracion por area`. Los resultados siguientes corresponden a la fase anterior validada por el usuario.
+Respaldo `respaldo-campusfix-qa-antes-mejoras` verificado en `bc6022e`, sin alterarlo. Evidencias nuevas: `docs/QA_MEJORAS.md`. Fases 1–3 verificadas (81 checks PostgreSQL; 27 Workspace y 4 Insights). Siguiente: registro/perfil, validaciones y navegación. Punto anterior `78d1619`; fase 3: `fix: aplicar notificaciones por evento y sincronizacion sin ruido`. Los resultados siguientes corresponden a la fase anterior validada por el usuario.
 
 Fecha: 2026-10-09 (America/Guayaquil). Respaldo `respaldo-campusfix-funcional` confirmado; árbol inicial limpio, base `3862abd`.
 No se ejecutaron push, despliegues ni operaciones sobre Supabase. El informe DOCX se consultó una vez; sus hipótesis no se consideran fallos demostrados.

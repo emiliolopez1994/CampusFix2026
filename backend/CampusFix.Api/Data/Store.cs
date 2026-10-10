@@ -12,8 +12,13 @@ public interface IStore {
  Task<long> Next(string name);
  Task PutFile(Archivo file);
  Task<Archivo?> GetFile(string key);
+ async Task<bool> CreateOnce(string kind,JsonObject value){if(await Get(kind,value.S("id"))!=null)return false;await Save(kind,value);return true;}
 }
 public class Store(CampusFixDbContext db):IStore {
+ public async Task<bool> CreateOnce(string kind,JsonObject value){var data=value.Copy();var id=data.S("id");data.Remove("id");data.Remove("_v");var json=data.ToJsonString();return await db.Database.ExecuteSqlInterpolatedAsync($"""
+  INSERT INTO "Documentos" ("Kind","Id","Data","Version") VALUES ({kind},{id},CAST({json} AS jsonb),1)
+  ON CONFLICT ("Kind","Id") DO NOTHING
+  """)>0;}
  static JsonObject Read(Documento d){var j=JsonNode.Parse(d.Data)!.AsObject();j["id"]=d.Id;j["_v"]=d.Version;return j;}
  static JsonObject Read(Usuario u){var j=JsonNode.Parse(u.Profile)!.AsObject();j["id"]=u.Id;j["correo"]=u.Email;j["_v"]=u.Version;j["passwordHash"]=u.PasswordHash;j["stamp"]=u.SecurityStamp;j["failures"]=u.AccessFailedCount;j["lockUntil"]=u.LockoutEnd?.ToString("O");return j;}
  public async Task<List<JsonObject>> All(string kind)=>kind=="users"?(await db.Users.AsNoTracking().ToListAsync()).Select(Read).ToList():(await db.Documentos.AsNoTracking().Where(x=>x.Kind==kind).ToListAsync()).Select(Read).ToList();

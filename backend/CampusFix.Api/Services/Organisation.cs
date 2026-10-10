@@ -15,6 +15,7 @@ public partial class CampusService
         }
         var area=config.FirstOrDefault(c=>c.S("id")==ticket.S("responsibleAreaId")&&c.S("kind")=="areas");
         ticket["needsClassification"]=area==null||!area.B("activo")||!users.Any(person=>person.B("activo")&&person.S("role")=="Administrador"&&area.A("managers").Has(person.S("id")));
+        ticket["participants"]=Arr(users.Where(person=>person.B("activo")&&(person.S("id")==ticket.S("reportadoPorId")||person.S("id")==ticket.S("tecnicoId")||person.S("role")=="Administrador"&&area.A("managers").Has(person.S("id")))).Select(person=>Obj(new{id=person.S("id"),nombre=person.S("nombre"),role=person.S("role")})));
         return ticket;
     }
     async Task<List<JsonObject>> RoutedTickets(){var configs=await s.All("config");var users=await s.All("users");return (await s.All("tickets")).Select(t=>RouteTicket(t,configs,users)).ToList();}
@@ -44,6 +45,6 @@ public partial class CampusService
         var area=await s.Get("config",service.S("responsibleAreaId"));Require(area!=null&&area.S("kind")=="areas"&&area.B("activo"),400,"Configura primero el área responsable del servicio.");
         var before=t!.S("responsibleAreaId");t["serviceId"]=service!.S("id");t["serviceNombre"]=service.S("nombre");t["responsibleAreaId"]=area!.S("id");t["responsibleAreaName"]=area.S("nombre");t.Remove("_routingBackfillV1");
         t["fechaActualizacion"]=Now();t.A("historial").Add(Merge(Event("Área responsable clasificada"),Obj(new{previousAreaId=before,responsibleAreaId=area.S("id"),actorId=u.S("id")})));
-        t=await s.Save("tickets",t);await Audit("Clasificación de reporte",id);return SafeTicket(RouteTicket(t,await s.All("config"),await s.All("users")),p);
+        t=await s.Save("tickets",t);await Audit("Clasificación de reporte",id);await NotifyEvent(t,"classified",$"Reporte CF-{id}: asignado a tu área responsable");return SafeTicket(RouteTicket(t,await s.All("config"),await s.All("users")),p);
     }
 }

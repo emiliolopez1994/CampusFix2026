@@ -25,3 +25,11 @@ Enrutamiento por servicio con snapshot de área responsable; administradores lim
 Selector global de técnicos activos con avanzar/solución habilitados; restricción opcional explícita por servicio. Asignación requiere versión y conserva historial con anterior/nuevo/actor/fecha. UI de responsables de área, áreas operativas, servicio responsable y bandeja de clasificación del propietario. Los tickets sin vínculo no se reasignan arbitrariamente; clasificar conserva pertenencia e historial.
 
 Compilaciones correctas; 72 comprobaciones PostgreSQL más migración aprobadas, 24 pruebas Workspace aprobadas. Incluyen acceso/registro cruzado denegado, clasificación y asignación fuera del equipo. Commit anterior `f0e6e30`; siguiente: notificaciones y sincronización.
+
+## Fase 3 verificada
+
+Avisos por creación (solicitante y administradores responsables; propietario solo clasificación), asignación (solicitante/nuevo técnico) y solución (solicitante/administración responsable). Sin aviso por estados intermedios, comentario normal, nota interna o lectura. Acción requerida usa destinatario validado y excluye autor; notas internas nunca se envían a solicitantes. Insert atómico ON CONFLICT por evento/versión/destinatario evita duplicados. Avisos antiguos ruidosos quedan almacenados, fuera de la bandeja activa; historial conservado.
+
+Polling visible cada 15 segundos, una consulta simultánea, actualiza tablero/detalle/indicadores/contador sin borrar borradores y retira accesos revocados. Marcar leído modifica solo lectura/contador, sin recarga secundaria. Recordatorios SLA/asignación de más de 24h: administración responsable, una vez por ticket; propietario solo crítico sin responsable; solicitante/técnico no reciben recordatorios por defecto.
+
+81 comprobaciones PostgreSQL aprobadas; Angular compilado, 30 pruebas Workspace+Insights iniciales y 27 Workspace tras el ajuste final de lectura (31 casos relevantes en total). QA-25 no se asumió: dos PUT de lectura repetidos no producen eventos y la UI no lanza GET adicional. Punto anterior `78d1619`; siguiente: registro/perfil, validaciones, navegación y porcentajes.
