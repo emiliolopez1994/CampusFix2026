@@ -24,9 +24,9 @@ No se ejecutaron push, despliegues ni operaciones sobre Supabase. El informe DOC
 - Último commit estable anterior: `782fab4` (etapa 1). Punto estable de etapa 2: `git log -1 --format=%h --grep="fix: conservar borradores durante atencion tecnica"`.
 - Pendiente: recorrido visual autenticado de producción y entrega real de correo; no ejecutados.
 
-## Siguiente etapa
+## Estado final
 
-Etapa 5: regresión final. Instrucciones reproducibles y límites en `docs/QA_LOCAL.md`.
+Etapas 1–5 completadas dentro del alcance local probado. Instrucciones reproducibles y límites en `docs/QA_LOCAL.md`. No quedan correcciones locales a medio implementar. Siguiente paso externo: despliegue y validación con cuentas de prueba solo cuando se autoricen; no se ha realizado.
 
 ## Etapa 3 — Administración: verificada localmente
 
@@ -45,3 +45,16 @@ Etapa 5: regresión final. Instrucciones reproducibles y límites en `docs/QA_LO
 - Lectura pública: login Vercel 200; health por Vercel y Render 200/Conectado. No se efectuaron POST autenticados en producción.
 - Vercel rewrites, Docker/Render, proxy de desarrollo y JWT revisados. No se requieren cambios de configuración detectados; el arreglo SQL sigue pendiente de despliegue autorizado.
 - Punto estable anterior `db8c27b`; commit de etapa: `git log -1 --format=%h --grep="test: verificar API real con PostgreSQL aislado"`.
+
+## Etapa 5 — Regresión final: verificada localmente
+
+- Ajuste final: al cambiar servicio, guardar inmediatamente el borrador sin los campos del servicio anterior; regresión añadida.
+- Archivos: `workspace.ts`, `workspace.spec.ts`, `tests/CampusFix.Checks/browser-qa.mjs`, documentación QA.
+- Angular: compilación producción correcta; suite completa **47/47**, siete archivos (formularios, navegación, acceso, temas, indicadores y CSV).
+- ASP.NET: compilación Debug sin errores/advertencias; **62/62** comprobaciones en memoria. Evidencia PostgreSQL de etapas 3–4 vigente: **62/62** de servicio y **66/66** por HTTP real (sin cambios posteriores en backend).
+- Edge headless con Angular compilado, ASP.NET y PostgreSQL local: **7/7** comprobaciones. Registro/login, fondo/Escape y guías, borrador tras recarga, POST 201 y creación persistente, respuesta tras navegación, diálogo móvil y ausencia de errores JavaScript.
+- La primera medición móvil se hizo durante la transición CSS de la barra lateral. Se ajustó la espera del test al diseño estable y pasó; no se modificó CSS por ese resultado transitorio.
+- Compilación Release local actualizada en `publish/`; Angular actualizado en `backend/CampusFix.Api/wwwroot/`. Hash de `publish/wwwroot/index.html` coincide con build Angular. Son salidas locales ignoradas por Git, no despliegues.
+- Puntos recuperables: etapa 1 `782fab4`, etapa 2 `3b12b8c`, etapa 3 `db8c27b`, etapa 4 `e3dde54`. Último punto estable: **HEAD**, commit `test: cerrar regresion QA local verificada` (resolver hash con `git log -1 --format=%h`).
+- PostgreSQL de QA: clúster propio en `tests/CampusFix.Checks/obj/qa-postgres`, loopback:55439; se detiene al terminar. Conserva únicamente datos sintéticos de HTTP/navegador en bases `campusfix_qa*`.
+- Límites pendientes: no despliegue, no prueba autenticada de producción, no entrega real de correo ni auditoría completa de accesibilidad/lector de pantalla. La validación visual automatizada de navegador se centró en Solicitante; los cuatro roles se comprobaron por lógica y HTTP.
