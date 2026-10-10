@@ -1,5 +1,11 @@
 # Progreso QA CampusFix
 
+## Ajuste QA-39 y QA-40 — 10-10-2026
+
+Jorge Romero tenía pertenencia a TI pero ninguna autorización operativa ni equipo. Con respaldo local previo se añadió únicamente TI a operationalAreas de Jorge; Javier y las demás cuentas permanecen intactos. Los seis artículos conservan sus relaciones: Gestión de accesos es un servicio de TI, no la cuenta Gestión de incidencias. Se conserva QA-39 sin cambios de filtrado.
+
+QA-40 reutiliza eliminado/fechaEliminacion en JSONB de PostgreSQL y añade eliminadoPorId al ejecutar DELETE; conserva registro e historial. Autorización explícita: Solicitante propio, Administrador de su área, Superadministrador global; Técnico siempre denegado. Exige versión, bloquea acceso y operaciones posteriores, conserva filtros de informes/listados y excluye eliminados del directorio operativo. Angular muestra Eliminar solicitud con confirmación, retira inmediatamente el ticket y refresca el listado. No requiere migración estructural. No se eliminó ninguna solicitud durante la implementación. Compilación API y revisión de tipos/plantillas Angular correctas; sin batería extensa. La eliminación real queda para la comprobación manual del usuario.
+
 ## Credenciales académicas locales — 10-10-2026
 
 Actualizadas exclusivamente 52 cuentas sintéticas; IDs, perfiles, roles y relaciones conservados. Correos calculados desde la primera letra y segunda palabra, sin tildes, con sufijos mínimos para colisiones. Contraseña fija solicitada; excepción autorizada `Ade00123456#` en siete cuentas «Administración de …». Se mantienen 62 usuarios, cero correos duplicados y las diez filas originales intactas. Respaldo previo: `%LOCALAPPDATA%\CampusFix\integral-2026-10-10\antes-credenciales-20261010-172928.dump`. Listado privado: `ACCESOS_LOCALES_ACTUALIZADOS.md` en ese mismo directorio.
