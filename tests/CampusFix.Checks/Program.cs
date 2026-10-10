@@ -18,6 +18,8 @@ if(pg&&string.IsNullOrWhiteSpace(testConnection))throw new Exception("CAMPUSFIX_
 if(pg){var c=new Npgsql.NpgsqlConnectionStringBuilder(testConnection);if(c.Host is not "127.0.0.1" and not "localhost"||c.Database?.StartsWith("campusfix_qa",StringComparison.Ordinal)!=true)throw new Exception("Por seguridad QA solo admite localhost y bases cuyo nombre empieza con campusfix_qa.");}
 await using var db=pg?new CampusFixDbContext(new DbContextOptionsBuilder<CampusFixDbContext>().UseNpgsql(testConnection!).Options):null;
 if(db!=null){await db.Database.MigrateAsync();if(await db.Users.AnyAsync()||await db.Documentos.AnyAsync())throw new Exception("La base de pruebas debe estar vacía. No se modificaron datos.");}
+if(db!=null&&!httpMode)await MigrationChecks.Run(db);
+if(args.Contains("--migration-only")){if(db==null)throw new Exception("Migration checks require --postgres.");return;}
 await using var transaction=db!=null&&!httpMode?await db.Database.BeginTransactionAsync():null;
 IStore store=db==null?new MemoryStore():new Store(db);var hasher=new PasswordHasher<Usuario>();var key=Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(64));var configuration=new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string,string?>{{"Jwt:Key",key},{"Mail:EncryptionKey",key}}).Build();int checks=0;
 await using var api=httpMode?await QaHttpApi.Start(testConnection!,key):null;

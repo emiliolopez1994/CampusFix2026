@@ -1,5 +1,9 @@
 # Progreso QA CampusFix
 
+## Nueva fase de mejoras posteriores a QA manual
+
+Respaldo `respaldo-campusfix-qa-antes-mejoras` verificado en `bc6022e`, sin alterarlo. Diagnóstico y evidencias nuevas: `docs/QA_MEJORAS.md`. Fase 1 (metadata y migración compatible) verificada; siguiente: enrutamiento y alcance por área. Los resultados siguientes corresponden a la fase anterior validada por el usuario.
+
 Fecha: 2026-10-09 (America/Guayaquil). Respaldo `respaldo-campusfix-funcional` confirmado; árbol inicial limpio, base `3862abd`.
 No se ejecutaron push, despliegues ni operaciones sobre Supabase. El informe DOCX se consultó una vez; sus hipótesis no se consideran fallos demostrados.
 
