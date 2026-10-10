@@ -17,3 +17,11 @@ Scripts revisables: `backend/CampusFix.Api/Migrations/Sql/service-routing-{up,do
 Prueba: `CAMPUSFIX_TEST_POSTGRES` debe apuntar a localhost/base vacía `campusfix_qa*`; `dotnet run --project tests/CampusFix.Checks -c QA --no-restore -- --postgres --migration-only`. Datos ficticios y rollback.
 
 Siguiente: permisos, enrutamiento y UI de configuración/clasificación.
+
+## Fase 2 verificada
+
+Enrutamiento por servicio con snapshot de área responsable; administradores limitados a áreas configuradas incluso con permisos antiguos de alcance global. Solicitante limitado a propios y conocimiento oculto; técnicos asignados/propios. Configuración institucional y responsabilidades reservadas al propietario; administración de personal limitada al ámbito operativo. Directorio técnico global expone únicamente información de asignación y carga, sin permisos/credenciales de otras áreas.
+
+Selector global de técnicos activos con avanzar/solución habilitados; restricción opcional explícita por servicio. Asignación requiere versión y conserva historial con anterior/nuevo/actor/fecha. UI de responsables de área, áreas operativas, servicio responsable y bandeja de clasificación del propietario. Los tickets sin vínculo no se reasignan arbitrariamente; clasificar conserva pertenencia e historial.
+
+Compilaciones correctas; 72 comprobaciones PostgreSQL más migración aprobadas, 24 pruebas Workspace aprobadas. Incluyen acceso/registro cruzado denegado, clasificación y asignación fuera del equipo. Commit anterior `f0e6e30`; siguiente: notificaciones y sincronización.
