@@ -30,7 +30,7 @@ async Task<JsonNode> Call(string path,string method="GET",JsonObject? b=null,Cla
 async Task Denied(int status,string path,string method,JsonObject b,ClaimsPrincipal principal,string label){try{await Call(path,method,b,principal);throw new Exception("Expected rejection: "+label);}catch(ApiError e){Assert(e.Status==status,label);}}
 ClaimsPrincipal Principal(JsonNode response){var principal=new JwtSecurityTokenHandler{MapInboundClaims=false}.ValidateToken(response.S("token"),new(){ValidateIssuer=true,ValidateAudience=true,ValidateLifetime=true,ValidateIssuerSigningKey=true,ValidIssuer="CampusFix.Api",ValidAudience="CampusFix.Angular",IssuerSigningKey=new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),ClockSkew=TimeSpan.Zero},out _);tokens[principal]=response.S("token");return principal;}
 const string password="CampusClaveSegura123";
-foreach(var role in Permissions.Roles){var userId=role switch{"Superadministrador"=>"owner@example.edu","Administrador"=>"admin@example.edu","Técnico"=>"tech@example.edu",_=>"student@example.edu"};await store.Save("users",Obj(new{id=userId,correo=userId,nombre=role,role,activo=true,passwordHash=hasher.HashPassword(new Usuario(),password),stamp=Id(),areas=new[]{"area"},areaId="area"}));}
+foreach(var role in Permissions.Roles){var userId=role switch{"Superadministrador"=>"owner@example.edu","Administrador"=>"admin@example.edu","Técnico"=>"tech@example.edu",_=>"student@example.edu"};await store.Save("users",Obj(new{id=userId,correo=userId,nombre=role,role,activo=true,passwordHash=hasher.HashPassword(new Usuario(),password),stamp=Id(),areas=new[]{"area"},areaId="area",operationalAreas=new[]{"area"}}));}
 async Task<ClaimsPrincipal> SignIn(string email)=>Principal(await Call("auth/login","POST",Obj(new{correo=email,password})));
 var owner=await SignIn("owner@example.edu");var admin=await SignIn("admin@example.edu");var tech=await SignIn("tech@example.edu");var student=await SignIn("student@example.edu");
 Assert((await Call("auth/me",principal:owner)).O("permissions").B("configuracion"),"Identity hash and signed JWT restore owner permissions");
@@ -46,6 +46,18 @@ await store.Save("config",Obj(new{id="belonging",kind="areas",nombre="Bienestar"
 await store.Save("config",Obj(new{id="other-provider",kind="areas",nombre="Mantenimiento",activo=true,managers=new[]{"other-admin@example.edu"}}));
 await store.Save("users",Obj(new{id="other-admin@example.edu",correo="other-admin@example.edu",nombre="Otra administración",role="Administrador",activo=true,passwordHash=hasher.HashPassword(new Usuario(),password),stamp=Id()}));
 var otherAdmin=await SignIn("other-admin@example.edu");
+var ownTeam=(await Call("config","POST",Obj(new{kind="equipos",nombre="Atención del área",activo=true,responsibleAreaId="area",members=new[]{"tech@example.edu"},managers=new[]{"admin@example.edu"}}),admin)).AsObject();
+Assert(ownTeam.S("responsibleAreaId")=="area","Area admin creates own team");
+var attempt=ownTeam.Copy();attempt["version"]=ownTeam.I("_v");attempt["nombre"]="Recurso ajeno";
+await Denied(403,"config","POST",attempt,otherAdmin,"Foreign admin cannot edit team by ID");
+attempt["responsibleAreaId"]="other-provider";await Denied(403,"config","POST",attempt,admin,"Admin cannot move resource into an unauthorized area");
+Assert(!(await Call("data",principal:otherAdmin)).A("config").Items().Any(c=>c.S("id")==ownTeam.S("id")),"Scoped resource catalog excludes foreign teams");
+var ownService=await Call("config","POST",Obj(new{kind="servicios",nombre="Atención institucional",activo=true,responsibleAreaId="area",teamId=ownTeam.S("id")}),admin);
+var ownCategory=await Call("config","POST",Obj(new{kind="categorias",nombre="Consulta institucional",activo=true,serviceId=ownService.S("id"),teamId=ownTeam.S("id")}),admin);
+Assert(ownCategory.S("serviceId")==ownService.S("id"),"Admin creates service and category within owned area");
+await Denied(403,"config","POST",Obj(new{kind="categorias",nombre="Global",activo=true}),admin,"Admin cannot create global categories");
+var wrongDestination=TicketBody();wrongDestination["attentionAreaId"]="other-provider";await Denied(409,"reportes","POST",wrongDestination,student,"Ticket rejects contradictory destination and service");
+
 var crossBody=TicketBody();crossBody["areaId"]="belonging";
 var crossUser=(await store.Get("users","student@example.edu"))!;crossUser["areas"]=new JsonArray("area","belonging");await store.Save("users",crossUser);
 var crossTicket=await Call("reportes","POST",crossBody,student);
@@ -59,6 +71,9 @@ Assert(unknownTicket.B("needsClassification"),"Missing service routes to owner c
 await Denied(404,$"reportes/{unknownTicket.S("id")}","GET",new(),admin,"Area admin cannot see unclassified ticket");
 var classified=await Call($"reportes/{unknownTicket.S("id")}/clasificar","PUT",Obj(new{serviceId="service",version=unknownTicket.I("_v")}),owner);
 Assert(classified.S("responsibleAreaId")=="area"&&classified.S("areaId")=="area","Owner classification preserves requester membership");
+var reread=await Call($"reportes/{classified.S("id")}",principal:admin);Assert(!reread.B("needsClassification"),"Classification survives subsequent authorized read");
+var reclassified=await Call($"reportes/{classified.S("id")}/clasificar","PUT",Obj(new{serviceId="service",version=reread.I("_v")}),admin);Assert(!reclassified.B("needsClassification"),"Authorized area administrator can classify scoped legacy ticket");
+
 await Call($"reportes/{classified.S("id")}","DELETE",new(),admin);
 var invalidTicket=TicketBody();invalidTicket["custom"]=new JsonObject();await Denied(400,"reportes","POST",invalidTicket,student,"Required dynamic field rejected with validation error");
 await store.Save("config",Obj(new{id="foreign-area",kind="areas",nombre="Área ajena",activo=true}));
@@ -98,6 +113,8 @@ await Denied(404,$"reportes/{id}","GET",new(),foreignTech,"Unassigned technician
 foreach(var operation in new[]{("estado","PATCH"),("solucion","PUT"),("mensajes","POST")})await Denied(404,$"reportes/{id}/{operation.Item1}",operation.Item2,Obj(new{estado=2,solucion="Ajena",text="Ajeno",version=ticket.I("_v")}),foreignTech,"Unassigned technician rejected for "+operation.Item1);
 await Denied(403,$"reportes/{id}/asignar","PUT",Obj(new{tecnicoId="tech@example.edu",version=ticket.I("_v")}),tech,"Technician cannot change assignment");
 Assert(((JsonArray)await Call("notifications",principal:tech)).Items().Any(n=>n.S("ticketId")==id),"Assignment notification visible to assigned technician");
+await Denied(400,$"reportes/{id}/asignar","PUT",Obj(new{tecnicoId="foreign-tech@example.edu",version=ticket.I("_v")}),admin,"Unscoped technician cannot be assigned even by administrator");
+var authorizedTech=(await store.Get("users","foreign-tech@example.edu"))!;authorizedTech["operationalAreas"]=new JsonArray("area","foreign-area");await store.Save("users",authorizedTech);
 ticket=(await Call($"reportes/{id}/asignar","PUT",Obj(new{tecnicoId="foreign-tech@example.edu",version=ticket.I("_v")}),admin)).AsObject();
 Assert(ticket.S("tecnicoId")=="foreign-tech@example.edu"&&ticket.A("assignments").Count>=2,"Active technician outside suggested team can be assigned with audit trail");
 await Denied(409,$"reportes/{id}/asignar","PUT",Obj(new{tecnicoId="tech@example.edu"}),admin,"Assignment requires explicit concurrency version");
@@ -142,7 +159,7 @@ await Denied(403,"config","POST",Obj(new{kind="areas",nombre="No autorizada"}),t
 await Denied(403,"mail","GET",new(),admin,"Administrator cannot access owner mail settings");
 await Denied(403,"usuarios/owner%40example.edu","PUT",Obj(new{nombre="Cambio ajeno"}),admin,"Administrator cannot alter owner account");
 await Denied(400,"usuarios/owner%40example.edu","PUT",Obj(new{nombre="Propietario",activo=false}),owner,"Owner cannot deactivate their own account");
-var managed=await Call("usuarios","POST",Obj(new{correo="managed@example.edu",nombre="Cuenta QA",role="Solicitante",password,areas=new[]{"area"},areaId="area"}),admin);Assert(managed.B("mustChange")&&managed["passwordHash"]==null,"Admin creates requester without exposing password hash");
+var managed=await Call("usuarios","POST",Obj(new{correo="managed@example.edu",nombre="Cuenta QA",role="Solicitante",password,areas=new[]{"area"},areaId="area",operationalAreas=new[]{"area"}}),admin);Assert(managed.B("mustChange")&&managed["passwordHash"]==null,"Admin creates requester without exposing password hash");
 managed=await Call("usuarios/managed%40example.edu","PUT",Obj(new{nombre="Cuenta QA actualizada",activo=false,version=managed.I("version")}),admin);Assert(!managed.B("activo")&&managed.S("nombre")=="Cuenta QA actualizada","Admin edits and deactivates requester persistently");
 var privileged=await Call("usuarios","POST",Obj(new{correo="managed-tech@example.edu",nombre="Técnico QA",role="Técnico",password}),owner);Assert(privileged.S("role")=="Técnico","Owner can create technician role");
 await Denied(403,"articles","POST",Merge(article,Obj(new{status="Borrador",version=article.I("_v")})),tech,"Technician cannot edit a published article by reverting to draft");

@@ -26,7 +26,7 @@ public partial class CampusService
             var eventKey=type=="sla"?$"ticket-{t.S("id")}-sla":$"ticket-{t.S("id")}-v{t.I("_v")}-{type}";
             var noticeId=eventKey+"-"+id;
             var added=await s.CreateOnce("notifications",Obj(new{id=noticeId,userId=id,title,ticketId=t.S("id"),eventType=type,eventKey,@internal=internalOnly,fecha=Now(),read=false}));
-            if(added&&mail.B("enabled"))await s.CreateOnce("mail",Obj(new{id=noticeId,userId=id,to=person.S("correo"),title,ticketId=t.S("id"),status="pending",attempts=0,created=Now(),next=Now()}));
+            if(added&&mail.B("enabled")&&!configuration.GetValue<bool>("LocalProvisioning:SuppressMail"))await s.CreateOnce("mail",Obj(new{id=noticeId,userId=id,to=person.S("correo"),title,ticketId=t.S("id"),status="pending",attempts=0,created=Now(),next=Now()}));
         }
     }
     async Task EnsureSlaNotices(List<JsonObject> tickets)

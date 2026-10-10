@@ -15,11 +15,13 @@ builder.Services.AddScoped<IStore,Store>();builder.Services.AddScoped<CampusServ
 builder.Services.AddHttpClient("mail",c=>c.Timeout=TimeSpan.FromSeconds(20));
 var jwtKey=builder.Configuration["Jwt:Key"];
 // Design-time EF operations and import do not issue sessions.
-var command=args.Contains("--import")||args.Contains("--schema")||args.Contains("--check-data");
+var provisioning=args.Contains("--provision-local");
+var command=provisioning||args.Contains("--import")||args.Contains("--schema")||args.Contains("--check-data");
 if(string.IsNullOrWhiteSpace(jwtKey)||jwtKey.Length<32){if(!command&&Environment.GetEnvironmentVariable("CAMPUSFIX_DESIGN_TIME")!="1")throw new InvalidOperationException("Configura Jwt:Key con una clave aleatoria de al menos 32 caracteres. Consulta INSTALACION.md.");jwtKey=new string('x',64);}
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o=>{o.MapInboundClaims=false;o.TokenValidationParameters=new(){ValidateIssuer=true,ValidateAudience=true,ValidateIssuerSigningKey=true,ValidateLifetime=true,ValidIssuer="CampusFix.Api",ValidAudience="CampusFix.Angular",IssuerSigningKey=new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),ClockSkew=TimeSpan.FromSeconds(30)};});
 builder.Services.AddAuthorization();builder.Services.AddControllers();builder.Services.AddOpenApi();
 var app=builder.Build();
+if(provisioning){await using var scope=app.Services.CreateAsyncScope();await LocalProvisioner.Run(args,scope.ServiceProvider,builder.Configuration,app.Environment);return;}
 if(command){await using var scope=app.Services.CreateAsyncScope();await Importer.Command(args,scope.ServiceProvider);return;}
 app.Use(async(context,next)=>{try{await next();}catch(ApiError e){context.Response.StatusCode=e.Status;await context.Response.WriteAsJsonAsync(new{title=e.Message,errors=e.Field==null?null:new Dictionary<string,string[]>{{e.Field,new[]{e.Message}}}});}catch(DbUpdateConcurrencyException){context.Response.StatusCode=409;await context.Response.WriteAsJsonAsync(new{title="El registro cambió en otra sesión. Actualiza antes de guardar."});}catch(Exception e){app.Logger.LogError(e,"Error de operación CampusFix. Referencia {TraceId}",context.TraceIdentifier);context.Response.StatusCode=500;await context.Response.WriteAsJsonAsync(new{title="No se pudo guardar la operación. Consulta tus reportes antes de reintentar y comunica la referencia a soporte.",traceId=context.TraceIdentifier});}});
 app.UseDefaultFiles();app.UseStaticFiles();app.UseAuthentication();app.UseAuthorization();app.MapControllers();

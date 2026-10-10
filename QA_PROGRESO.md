@@ -1,5 +1,10 @@
 # Progreso QA CampusFix
 
+## Especificación integral 10-10-2026 — en curso
+
+Código QA-30/31/34/35/36/37 implementado; aprovisionamiento EJECUTADO en localhost:5432/campusfix, con respaldo privado. 8 áreas × 5 solicitudes, 62 usuarios totales; segunda ejecución sin duplicados. Evidencias y pendientes en docs/QA_INTEGRAL_2026-10-10.md. Faltan recorrido UI local y cierre de regresión; no declarar cierre todavía.
+
+
 ## Nueva fase de mejoras posteriores a QA manual
 
 Respaldo `respaldo-campusfix-qa-antes-mejoras` verificado en `bc6022e`, sin alterarlo. Evidencias nuevas: `docs/QA_MEJORAS.md`. Fases 1–5 completadas y verificadas: 54 pruebas Angular, 88 de negocio PostgreSQL más migración, 92 HTTP y 13 navegador multirrol. Commits: `f0e6e30`, `78d1619`, `b0dc902`, `f3d397f` y commit local de cierre. No repetir auditoría: cobertura y reproducción en `docs/QA_MEJORAS.md`. Pendiente externo: configurar las relaciones institucionales reales y aplicar la migración únicamente cuando corresponda; no se tocaron datos reales ni la instancia Debug abierta. Los resultados siguientes corresponden a la fase anterior validada por el usuario.
@@ -62,3 +67,4 @@ Etapas 1–5 completadas dentro del alcance local probado. Instrucciones reprodu
 - Puntos recuperables: etapa 1 `782fab4`, etapa 2 `3b12b8c`, etapa 3 `db8c27b`, etapa 4 `e3dde54`. Último punto estable: **HEAD**, commit `test: cerrar regresion QA local verificada` (resolver hash con `git log -1 --format=%h`).
 - PostgreSQL de QA: clúster propio en `tests/CampusFix.Checks/obj/qa-postgres`, loopback:55439; se detiene al terminar. Conserva únicamente datos sintéticos de HTTP/navegador en bases `campusfix_qa*`.
 - Límites pendientes: no despliegue, no prueba autenticada de producción, no entrega real de correo ni auditoría completa de accesibilidad/lector de pantalla. La validación visual automatizada de navegador se centró en Solicitante; los cuatro roles se comprobaron por lógica y HTTP.
+
