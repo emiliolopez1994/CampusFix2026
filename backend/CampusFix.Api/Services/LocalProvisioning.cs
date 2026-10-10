@@ -11,7 +11,7 @@ public partial class CampusService
     {
         var people=await s.All("users");u=people.First(x=>x.S("role")=="Superadministrador"&&x.B("activo"));p=Defaults("Superadministrador");
         var syntheticIds=people.Where(x=>x.S("syntheticOrigin")==ProvisionBatch).Select(x=>x.S("id")).ToHashSet();foreach(var ticket in (await s.All("tickets")).Where(t=>t.S("syntheticOrigin")==""&&syntheticIds.Contains(t.S("reportadoPorId")))){ticket["syntheticOrigin"]=ProvisionBatch;await s.Save("tickets",ticket);}
-        var owner=u.Copy();var areas=(await s.All("config")).Where(c=>c.S("kind")=="areas"&&c.B("activo")).OrderBy(c=>c.S("id")).ToList();
+        var owner=u.Copy();var areas=(await s.All("config")).Where(c=>c.S("kind")=="areas"&&c.B("activo")).GroupBy(c=>AreaNameKey(c.S("nombre"))).Select(g=>g.OrderByDescending(c=>!string.IsNullOrWhiteSpace(c.S("descripcion"))).ThenBy(c=>c.S("id")).First()).OrderBy(c=>c.S("id")).ToList();
         Require(areas.Count>0,400,"No hay áreas institucionales activas.");var report=new JsonArray();
         string Key(string area,string part)=>"local-"+Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(area))).ToLowerInvariant()[..12]+"-"+part;
         async Task<JsonObject> Person(string id,string name,string role,string area){

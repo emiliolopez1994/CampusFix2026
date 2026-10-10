@@ -4,7 +4,18 @@ using static CampusFix.Api.Services.J;
 using static CampusFix.Api.Services.Permissions;
 namespace CampusFix.Api.Services;
 public partial class CampusService {
+ // Only confirmed institutional aliases; never merge areas through fuzzy similarity alone.
+ static string AreaNameKey(string name){
+  var key=Regex.Replace(string.Concat(name.Normalize(System.Text.NormalizationForm.FormD).Where(c=>System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c)!=System.Globalization.UnicodeCategory.NonSpacingMark)),@"\s+"," ").Trim().TrimEnd('.').ToUpperInvariant();
+  return key switch {
+   "SECREATRIA" or "SECREATRIA ACADEMICA" or "SECRETARIA" or "SECRETARIA ACAD"=>"SECRETARIA ACADEMICA",
+   "REGISTRO ACAD"=>"REGISTRO ACADEMICO",
+   "TI"=>"TECNOLOGIAS DE LA INFORMACION",
+   _=>key
+  };
+ }
  async Task<object> ConfigApi(JsonObject b){Need("gestionarConfiguracion");Require(Admin(u),403,"Configuración reservada a administración.");var kind=b.S("kind");Require(new[]{"organizacion","areas","sedes","ubicaciones","equipos","servicios","categorias","calendarios","metas"}.Contains(kind),400,"Tipo de configuración inválido.");var config=await s.All("config");var old=config.FirstOrDefault(c=>c.S("id")==b.S("id",kind=="organizacion"?"organizacion":""));Require(b.S("id")==""||old!=null,404,"Configuración no encontrada.");Require(old==null||old.S("kind")==kind,400,"No puedes cambiar el tipo de un elemento existente.");Version(old,b);Require(kind!="organizacion"||b.B("activo",true),400,"La organización debe permanecer activa.");var id=old.S("id",kind=="organizacion"?"organizacion":Id());var parentId=b.S("parentId");if(parentId!=""){var parent=config.FirstOrDefault(c=>c.S("id")==parentId&&c.S("kind")==kind&&c.B("activo"));Require(parent!=null,400,"Elemento padre no válido.");var seen=new HashSet<string>{id};while(parent!=null){Require(seen.Add(parent.S("id")),400,"No se permiten jerarquías circulares.");parent=config.FirstOrDefault(c=>c.S("id")==parent.S("parentId"));}}
+  if(kind=="areas")Require(!config.Any(c=>c.S("kind")=="areas"&&c.S("id")!=id&&AreaNameKey(c.S("nombre"))==AreaNameKey(b.S("nombre"))),409,"Ya existe un área institucional con ese nombre. Edita el registro existente.");
   if(kind is "calendarios" or "organizacion"){try{TimeZoneInfo.FindSystemTimeZoneById(b.S("timezone","America/Guayaquil"));}catch{throw new ApiError(400,"Zona horaria no válida.");}}
   if(kind=="calendarios"){var days=b.A("days");Require(days.Count>0&&days.All(d=>int.TryParse(d?.ToString(),out var day)&&day is >=0 and <=6)&&Regex.IsMatch(b.S("start"),@"^([01]\d|2[0-3]):[0-5]\d$")&&Regex.IsMatch(b.S("end"),@"^([01]\d|2[0-3]):[0-5]\d$")&&string.CompareOrdinal(b.S("start"),b.S("end"))<0,400,"Revisa días y horario laboral.");Require(b.A("holidays").All(d=>DateOnly.TryParseExact(d?.ToString(),"yyyy-MM-dd",out _)),400,"Revisa las fechas de los festivos.");}
   if(kind=="metas")Require(b.I("prioridad") is >=1 and <=4&&b.D("responseHours")>0&&b.D("responseHours")<=8760&&b.D("resolutionHours")>0&&b.D("resolutionHours")<=8760,400,"Revisa prioridad y horas de las metas.");
