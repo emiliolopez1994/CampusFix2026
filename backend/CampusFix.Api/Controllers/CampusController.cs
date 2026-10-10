@@ -80,6 +80,10 @@ public class CampusController(CampusService service,CampusFixDbContext db):Contr
  public Task<IActionResult> Operation33([FromBody(EmptyBodyBehavior=Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] JsonObject? body)=>Run("mail/activate",body);
  [HttpPost("mail/process")]
  public Task<IActionResult> Operation34([FromBody(EmptyBodyBehavior=Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] JsonObject? body)=>Run("mail/process",body);
+ [HttpGet("auth/areas")]
+ public Task<IActionResult> RegistrationAreas()=>Run("auth/areas");
+ [HttpPut("auth/profile")]
+ public Task<IActionResult> Profile([FromBody] JsonObject body)=>Run("auth/profile",body);
  [HttpPut("reportes/{id}/clasificar")]
  public Task<IActionResult> Classify(string id,[FromBody] JsonObject body)=>Run($"reportes/{id}/clasificar",body);
  async Task<IActionResult> Run(string path,JsonObject? body=null){

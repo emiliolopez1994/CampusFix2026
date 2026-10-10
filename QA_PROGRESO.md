@@ -2,7 +2,7 @@
 
 ## Nueva fase de mejoras posteriores a QA manual
 
-Respaldo `respaldo-campusfix-qa-antes-mejoras` verificado en `bc6022e`, sin alterarlo. Evidencias nuevas: `docs/QA_MEJORAS.md`. Fases 1–3 verificadas (81 checks PostgreSQL; 27 Workspace y 4 Insights). Siguiente: registro/perfil, validaciones y navegación. Punto anterior `78d1619`; fase 3: `fix: aplicar notificaciones por evento y sincronizacion sin ruido`. Los resultados siguientes corresponden a la fase anterior validada por el usuario.
+Respaldo `respaldo-campusfix-qa-antes-mejoras` verificado en `bc6022e`, sin alterarlo. Evidencias nuevas: `docs/QA_MEJORAS.md`. Fases 1–4 verificadas (85 checks PostgreSQL y migración; 36 pruebas Angular relevantes). Siguiente: regresión integral HTTP y navegador multirrol. Punto anterior `78d1619`; fase 3: `fix: aplicar notificaciones por evento y sincronizacion sin ruido`. Los resultados siguientes corresponden a la fase anterior validada por el usuario.
 
 Fecha: 2026-10-09 (America/Guayaquil). Respaldo `respaldo-campusfix-funcional` confirmado; árbol inicial limpio, base `3862abd`.
 No se ejecutaron push, despliegues ni operaciones sobre Supabase. El informe DOCX se consultó una vez; sus hipótesis no se consideran fallos demostrados.
@@ -62,3 +62,4 @@ Etapas 1–5 completadas dentro del alcance local probado. Instrucciones reprodu
 - Puntos recuperables: etapa 1 `782fab4`, etapa 2 `3b12b8c`, etapa 3 `db8c27b`, etapa 4 `e3dde54`. Último punto estable: **HEAD**, commit `test: cerrar regresion QA local verificada` (resolver hash con `git log -1 --format=%h`).
 - PostgreSQL de QA: clúster propio en `tests/CampusFix.Checks/obj/qa-postgres`, loopback:55439; se detiene al terminar. Conserva únicamente datos sintéticos de HTTP/navegador en bases `campusfix_qa*`.
 - Límites pendientes: no despliegue, no prueba autenticada de producción, no entrega real de correo ni auditoría completa de accesibilidad/lector de pantalla. La validación visual automatizada de navegador se centró en Solicitante; los cuatro roles se comprobaron por lógica y HTTP.
+

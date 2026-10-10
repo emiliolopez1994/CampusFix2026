@@ -33,3 +33,11 @@ Avisos por creación (solicitante y administradores responsables; propietario so
 Polling visible cada 15 segundos, una consulta simultánea, actualiza tablero/detalle/indicadores/contador sin borrar borradores y retira accesos revocados. Marcar leído modifica solo lectura/contador, sin recarga secundaria. Recordatorios SLA/asignación de más de 24h: administración responsable, una vez por ticket; propietario solo crítico sin responsable; solicitante/técnico no reciben recordatorios por defecto.
 
 81 comprobaciones PostgreSQL aprobadas; Angular compilado, 30 pruebas Workspace+Insights iniciales y 27 Workspace tras el ajuste final de lectura (31 casos relevantes en total). QA-25 no se asumió: dos PUT de lectura repetidos no producen eventos y la UI no lanza GET adicional. Punto anterior `78d1619`; siguiente: registro/perfil, validaciones, navegación y porcentajes.
+
+## Fase 4 verificada
+
+Registro con catálogo público mínimo de áreas activas y selección obligatoria cuando existe catálogo; perfil de solicitante permite corregir pertenencia con versión concurrente. Los reportes históricos conservan el área original. Formularios muestran errores por campo, foco del primer inválido y botón de envío disponible para explicar errores. Fondo no cierra diálogos; cancelar confirma cambios de formularios y detalle.
+
+Comentarios/adjuntos y soluciones vuelven a la vista de origen solo después de éxito; borradores técnicos ajenos a la acción se conservan en memoria al reabrir. Indicadores muestran porcentajes redondeados; filtros administrativos por área responsable, independientes del área solicitante. Perfil no permite cambiar áreas operativas del personal.
+
+Backend compilado y 85 comprobaciones PostgreSQL más migración aprobadas. Angular compilado y 36 pruebas relevantes aprobadas. Se detectó y corrigió el uso de `_v` en vez de `version` pública en perfil, con prueba específica. Siguiente: regresión integral HTTP, navegador multirrol y entrega.

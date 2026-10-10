@@ -2,7 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 namespace CampusFix.Api.Services;
-public class ApiError(int status,string message):Exception(message) { public int Status {get;}=status; }
+public class ApiError(int status,string message,string? field=null):Exception(message) { public int Status {get;}=status; public string? Field {get;}=field; }
 public static class J {
  public static JsonObject Obj(object? o=null)=>o is null?new():JsonSerializer.SerializeToNode(o)!.AsObject();
  public static JsonArray Arr(IEnumerable<JsonObject> xs)=>new(xs.Select(x=>(JsonNode)x.DeepClone()).ToArray());
@@ -20,7 +20,7 @@ public static class J {
  public static string Now()=>DateTimeOffset.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
  public static DateTimeOffset Date(string s)=>DateTimeOffset.TryParse(s,out var d)?d:DateTimeOffset.MinValue;
  public static void Require([System.Diagnostics.CodeAnalysis.DoesNotReturnIf(false)] bool c,int status,string message){if(!c)throw new ApiError(status,message);}
- public static string Required(JsonObject b,string key,string label,int max=160){var v=b.S(key).Trim();Require(v.Length>0&&v.Length<=max,400,$"{label}: completa el campo (máximo {max} caracteres).");return v;}
+ public static string Required(JsonObject b,string key,string label,int max=160){var v=b.S(key).Trim();if(v.Length==0||v.Length>max)throw new ApiError(400,$"{label}: completa el campo (máximo {max} caracteres).",key);return v;}
  public static string Email(JsonObject b,string key="correo"){var s=Required(b,key,"Correo",254).ToLowerInvariant();Require(Regex.IsMatch(s,@"^[^\s@]+@[^\s@]+\.[^\s@]+$"),400,"Correo no válido.");return s;}
  public static string Password(JsonObject b,string key="password"){var s=b.S(key);Require(s.Length>=12&&s.Length<=128&&Regex.IsMatch(s,"[a-z]")&&Regex.IsMatch(s,"[A-Z]")&&Regex.IsMatch(s,"[0-9]"),400,"Usa de 12 a 128 caracteres, mayúsculas, minúsculas y números.");return s;}
  public static void Version(JsonObject? old,JsonObject b){if(b.ContainsKey("version")&&b["version"]!=null)Require(old!=null&&b.I("version",-1)==old.I("_v"),409,"El registro cambió. Actualiza antes de guardar.");}

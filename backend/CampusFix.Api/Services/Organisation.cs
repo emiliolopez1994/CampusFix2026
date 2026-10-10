@@ -5,6 +5,18 @@ using static CampusFix.Api.Services.Permissions;
 namespace CampusFix.Api.Services;
 public partial class CampusService
 {
+    async Task<JsonObject> Membership(JsonObject body)
+    {
+        var areas=(await s.All("config")).Where(c=>c.S("kind")=="areas"&&c.B("activo")).ToList();var id=body.S("areaId");
+        if(areas.Count>0&&!areas.Any(a=>a.S("id")==id)||areas.Count==0&&id!="")throw new ApiError(400,"Selecciona un área de pertenencia activa.","areaId");
+        return Obj(new{areaId=id,areas=id==""?Array.Empty<string>():new[]{id}});
+    }
+    async Task<object> UpdateMembership(JsonObject body)
+    {
+        Require(u.S("role")=="Solicitante",403,"La pertenencia del personal se gestiona desde administración.");
+        Require(body.ContainsKey("version")&&body.I("version",-1)==u.I("_v"),409,"Tu perfil cambió. Actualiza antes de guardar.");
+        u=await s.Save("users",Merge(u,await Membership(body)));await Audit("Área de pertenencia actualizada por solicitante",u.S("id"));var result=Public(u);result["permissions"]=await Effective(s,u);return result;
+    }
     JsonObject RouteTicket(JsonObject ticket,List<JsonObject> config,List<JsonObject> users)
     {
         // Legacy records acquire only explicit service metadata, never requester membership.

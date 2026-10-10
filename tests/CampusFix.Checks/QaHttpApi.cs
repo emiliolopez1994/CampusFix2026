@@ -16,7 +16,7 @@ sealed class QaHttpApi : IAsyncDisposable
     public static async Task<QaHttpApi> Start(string connection, string key)
     {
         var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
-        var dll = Path.Combine(root, "backend/CampusFix.Api/bin/Debug/net10.0/CampusFix.Api.dll");
+        var dll = Path.Combine(root, "backend/CampusFix.Api/bin/" + (typeof(QaHttpApi).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyConfigurationAttribute), false).Cast<System.Reflection.AssemblyConfigurationAttribute>().Single().Configuration) + "/net10.0/CampusFix.Api.dll");
         var listener = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
         listener.Start();var port = ((IPEndPoint)listener.LocalEndpoint).Port;listener.Stop();
         var url = $"http://127.0.0.1:{port}";

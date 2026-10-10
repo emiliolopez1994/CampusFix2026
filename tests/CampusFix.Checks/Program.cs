@@ -64,8 +64,14 @@ await store.Save("config",Obj(new{id="foreign-area",kind="areas",nombre="Área a
 invalidTicket=TicketBody();invalidTicket["areaId"]="foreign-area";await Denied(403,"reportes","POST",invalidTicket,student,"Requester cannot create tickets for an unauthorized area");
 var unclassified=TicketBody();unclassified["areaId"]="";var unclassifiedTicket=await Call("reportes","POST",unclassified,student);Assert(unclassifiedTicket.S("areaId")=="","Explicit pending classification does not silently restore the main area");
 await Call($"reportes/{unclassifiedTicket.S("id")}","DELETE",new(),admin);
-var registered=Principal(await Call("auth/registro","POST",Obj(new{correo="new-requester@example.edu",nombre="Nuevo solicitante",password})));
-var newBody=TicketBody();newBody["areaId"]="";var newTicket=await Call("reportes","POST",newBody,registered);Assert(newTicket.S("reportadoPorId")=="new-requester@example.edu"&&newTicket.S("areaId")=="","Public registration without area can create an unclassified ticket");
+var registered=Principal(await Call("auth/registro","POST",Obj(new{correo="new-requester@example.edu",nombre="Nuevo solicitante",password,areaId="belonging"})));
+var newBody=TicketBody();newBody["areaId"]="belonging";var newTicket=await Call("reportes","POST",newBody,registered);Assert(newTicket.S("reportadoPorId")=="new-requester@example.edu"&&newTicket.S("areaId")=="belonging","Registration selects membership independently of provider");
+var profile=await Call("auth/me",principal:registered);
+await Denied(400,"auth/profile","PUT",Obj(new{areaId="missing",version=profile.I("version")}),registered,"Profile rejects unavailable membership");
+await Denied(409,"auth/profile","PUT",Obj(new{areaId="area",version=0}),registered,"Profile requires current version");
+await Call("auth/profile","PUT",Obj(new{areaId="area",version=profile.I("version")}),registered);
+Assert((await Call($"reportes/{newTicket.S("id")}",principal:registered)).S("areaId")=="belonging","Profile correction preserves historical ticket area");
+Assert((await Call("auth/me",principal:registered)).S("areaId")=="area","Profile correction applies to future membership");
 await Call($"reportes/{newTicket.S("id")}","DELETE",new(),admin);
 var ticket=(await Call("reportes","POST",TicketBody(),student)).AsObject();var id=ticket.S("id");
 Assert(ticket.I("estado")==1&&ticket.S("reportadoPorId")=="student@example.edu"&&ticket.S("teamId")=="team","Create ticket preserves reporter, initial state and suggested team");

@@ -5,6 +5,7 @@ import { firstValueFrom, catchError, throwError } from 'rxjs';
 @Injectable({providedIn:'root'})
 export class Auth {
  http=inject(HttpClient); router=inject(Router); user=signal<any>(null); organization=signal('Mi institución'); unread=signal(0); token=signal(sessionStorage.getItem('campusfix-token')||'');
+ registrationAreas(){return firstValueFrom(this.http.get<any[]>('/api/auth/areas'));}
  async restore(){if(!this.token())return false;try{this.user.set(await firstValueFrom(this.http.get('/api/auth/me')));return true;}catch{this.clear();return false;}}
  async login(data:any,register=false){let r:any=await firstValueFrom(this.http.post('/api/auth/'+(register?'registro':'login'),data));sessionStorage.setItem('campusfix-token',r.token);this.token.set(r.token);this.user.set(r);await this.router.navigateByUrl(r.mustChange?'/cuenta':'/panel');}
  clear(){this.unread.set(0);this.user.set(null);this.token.set('');sessionStorage.removeItem('campusfix-token');}
