@@ -11,9 +11,10 @@ const connection=process.env.CAMPUSFIX_TEST_POSTGRES||'';
 assert.match(connection,/(?:^|;)Host=(?:127\.0\.0\.1|localhost)(?:;|$)/i);
 assert.match(connection,/(?:^|;)Database=campusfix_qa[^;]*(?:;|$)/i);
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../..');
+const configuration=process.env.CAMPUSFIX_BUILD_CONFIGURATION||'QA';
 const socket=createServer();await new Promise(r=>socket.listen(0,'127.0.0.1',r));const port=socket.address().port;await new Promise(r=>socket.close(r));
 const url=`http://127.0.0.1:${port}`;
-const api=spawn('dotnet',[resolve(root,'backend/CampusFix.Api/bin/QA/net10.0/CampusFix.Api.dll'),'--urls',url,'--webroot',resolve(root,'frontend/campusfix-web/dist/campusfix-web/browser')],{cwd:resolve(root,'backend/CampusFix.Api/bin/QA/net10.0'),windowsHide:true,stdio:'ignore',env:{...process.env,ASPNETCORE_ENVIRONMENT:'QaTesting',ConnectionStrings__CampusFix:connection,Jwt__Key:randomBytes(64).toString('base64')}});
+const api=spawn('dotnet',[resolve(root,`backend/CampusFix.Api/bin/${configuration}/net10.0/CampusFix.Api.dll`),'--urls',url,'--webroot',resolve(root,'frontend/campusfix-web/dist/campusfix-web/browser')],{cwd:resolve(root,`backend/CampusFix.Api/bin/${configuration}/net10.0`),windowsHide:true,stdio:'ignore',env:{...process.env,ASPNETCORE_ENVIRONMENT:'QaTesting',ConnectionStrings__CampusFix:connection,Jwt__Key:randomBytes(64).toString('base64')}});
 let browser;let checks=0;const errors=[];
 const check=label=>{checks++;console.log('PASS browser '+label);};
 try{

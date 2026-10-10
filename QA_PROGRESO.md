@@ -1,8 +1,8 @@
 # Progreso QA CampusFix
 
-## Especificación integral 10-10-2026 — en curso
+## Especificación integral 10-10-2026 — implementación cerrada; aceptación manual del usuario
 
-Código QA-30/31/34/35/36/37 implementado; aprovisionamiento EJECUTADO en localhost:5432/campusfix, con respaldo privado. 8 áreas × 5 solicitudes, 62 usuarios totales; segunda ejecución sin duplicados. Evidencias y pendientes en docs/QA_INTEGRAL_2026-10-10.md. Faltan recorrido UI local y cierre de regresión; no declarar cierre todavía.
+QA-30/31/34/35/36/37 implementados; carga EJECUTADA en localhost:5432/campusfix con respaldo. 8 áreas × 5 solicitudes iniciales, 62 usuarios, 116 recursos, 68 tickets incluyendo uno adicional solucionado. Repetición sin duplicados y persistencia tras reiniciar. Regresión: 58 Angular, 98 negocio PostgreSQL, dos migraciones, 102 HTTP, 13 navegador multirrol y 8 instalación local. Accesos privados organizados y evidencia en docs/QA_INTEGRAL_2026-10-10.md e inventario adjunto. Commits 10e1f3c, 898aba3 y cierre local. El usuario asumió expresamente la verificación manual; las sesiones de cuentas existentes no se declaran probadas en la instalación principal. No repetir auditorías ya verificadas. Producción y etiqueta bc6022e intactas.
 
 
 ## Nueva fase de mejoras posteriores a QA manual
