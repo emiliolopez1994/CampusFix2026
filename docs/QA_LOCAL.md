@@ -1,3 +1,5 @@
+La fase posterior de mejoras está documentada en [QA_MEJORAS.md](QA_MEJORAS.md), con pruebas y comandos vigentes. Este documento conserva la evidencia histórica anterior.
+
 # Verificación local y límites de producción
 
 ## Resultado de integración del 9 de octubre de 2026

@@ -19,6 +19,7 @@ if(pg){var c=new Npgsql.NpgsqlConnectionStringBuilder(testConnection);if(c.Host 
 await using var db=pg?new CampusFixDbContext(new DbContextOptionsBuilder<CampusFixDbContext>().UseNpgsql(testConnection!).Options):null;
 if(db!=null){await db.Database.MigrateAsync();if(await db.Users.AnyAsync()||await db.Documentos.AnyAsync())throw new Exception("La base de pruebas debe estar vacía. No se modificaron datos.");}
 if(db!=null&&!httpMode)await MigrationChecks.Run(db);
+if(args.Contains("--seed-browser")){if(db==null)throw new Exception("Browser fixture requires local PostgreSQL.");await BrowserFixture.Seed(new Store(db));return;}
 if(args.Contains("--migration-only")){if(db==null)throw new Exception("Migration checks require --postgres.");return;}
 await using var transaction=db!=null&&!httpMode?await db.Database.BeginTransactionAsync():null;
 IStore store=db==null?new MemoryStore():new Store(db);var hasher=new PasswordHasher<Usuario>();var key=Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(64));var configuration=new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string,string?>{{"Jwt:Key",key},{"Mail:EncryptionKey",key}}).Build();int checks=0;
@@ -73,6 +74,15 @@ await Call("auth/profile","PUT",Obj(new{areaId="area",version=profile.I("version
 Assert((await Call($"reportes/{newTicket.S("id")}",principal:registered)).S("areaId")=="belonging","Profile correction preserves historical ticket area");
 Assert((await Call("auth/me",principal:registered)).S("areaId")=="area","Profile correction applies to future membership");
 await Call($"reportes/{newTicket.S("id")}","DELETE",new(),admin);
+var reminder=await Call("reportes","POST",TicketBody(),student);var reminderId=reminder.S("id");
+var aged=(await store.Get("tickets",reminderId))!;aged["fechaReporte"]=DateTimeOffset.UtcNow.AddDays(-2).ToString("O");await store.Save("tickets",aged);
+await Call("data",principal:student);Assert(!(await store.All("notifications")).Any(n=>n.S("ticketId")==reminderId&&n.S("eventType")=="sla"),"Requester polling does not trigger SLA noise");
+await Call("data",principal:admin);await Call("data",principal:admin);
+var reminders=(await store.All("notifications")).Where(n=>n.S("ticketId")==reminderId&&n.S("eventType")=="sla").ToList();Assert(reminders.Count==1&&reminders[0].S("userId")=="admin@example.edu","Repeated overdue polling notifies responsible admin exactly once");
+await Call($"reportes/{reminderId}","DELETE",new(),admin);
+var criticalBody=TicketBody();criticalBody["serviceId"]="";criticalBody["custom"]=new JsonObject();criticalBody["prioridad"]=4;var critical=await Call("reportes","POST",criticalBody,student);var criticalId=critical.S("id");
+aged=(await store.Get("tickets",criticalId))!;aged["fechaReporte"]=DateTimeOffset.UtcNow.AddDays(-2).ToString("O");await store.Save("tickets",aged);await Call("data",principal:owner);
+reminders=(await store.All("notifications")).Where(n=>n.S("ticketId")==criticalId&&n.S("eventType")=="sla").ToList();Assert(reminders.Count==1&&reminders[0].S("userId")=="owner@example.edu","Critical unclassified reminder goes only to owner");await Call($"reportes/{criticalId}","DELETE",new(),owner);
 var ticket=(await Call("reportes","POST",TicketBody(),student)).AsObject();var id=ticket.S("id");
 Assert(ticket.I("estado")==1&&ticket.S("reportadoPorId")=="student@example.edu"&&ticket.S("teamId")=="team","Create ticket preserves reporter, initial state and suggested team");
 var createdNotices=(await store.All("notifications")).Where(n=>n.S("ticketId")==id).ToList();
