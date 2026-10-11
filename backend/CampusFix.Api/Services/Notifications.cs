@@ -7,7 +7,7 @@ public partial class CampusService
 {
     async Task NotifyEvent(JsonObject ticket,string type,string title,string targetId="",bool internalOnly=false)
     {
-        var users=await s.All("users");var config=await s.All("config");var mail=await s.Get("settings","mail");
+        var users=await ActiveRecords("users");var config=await ActiveRecords("config");var mail=await s.Get("settings","mail");
         var t=RouteTicket(ticket,config,users);
         foreach(var person in users.Where(x=>x.B("activo"))){
             var id=person.S("id");var perms=await Effective(s,person);

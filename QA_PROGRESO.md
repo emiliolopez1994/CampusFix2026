@@ -1,5 +1,11 @@
 # Progreso QA CampusFix
 
+## QA-41 — CRUD administrativo y eliminación lógica
+
+Se conservó QA-40. Se añadieron DELETE lógicos para áreas, sedes, ubicaciones, equipos, servicios, categorías, calendarios, metas, usuarios, artículos y conexión de correo. Eliminado/fechaEliminacion/eliminadoPorId se guardan en JSONB; no hace falta migración estructural. Catálogos operativos excluyen eliminados y las operaciones directas los rechazan. Dependencias activas bloquean el retiro con 409, sin cascadas ni reasignaciones. Usuarios: protección de cuenta propia/último Superadministrador; administradores no pueden retirar cuentas compartidas con otras áreas. Organización y cuatro roles esenciales permanecen protegidos; se agregaron perfiles reutilizables de permisos con CRUD, desactivación y aplicación explícita sobre la configuración seleccionada.
+
+Angular incorpora la confirmación común y refresco de listados. Técnico: edición exclusiva de mensajes propios, fecha original preservada y marca Editado, sin borrado. Solicitante: edición de título/ubicación/descripción en solicitudes propias Reportado y sin asignar; relaciones y prioridad permanecen protegidas. Revisión local: 62 usuarios, 8 áreas, 68 tickets, 6 artículos; no se eliminó ningún registro ni se cambiaron credenciales. Compilación API y compilador Angular; sin batería extensa. Pendiente manual: confirmaciones, bloqueos por dependencias/ámbito, perfiles de permisos, correo, edición propia y eliminación de registros creados por el usuario para verificar.
+
 ## Ajuste QA-39 y QA-40 — 10-10-2026
 
 Jorge Romero tenía pertenencia a TI pero ninguna autorización operativa ni equipo. Con respaldo local previo se añadió únicamente TI a operationalAreas de Jorge; Javier y las demás cuentas permanecen intactos. Los seis artículos conservan sus relaciones: Gestión de accesos es un servicio de TI, no la cuenta Gestión de incidencias. Se conserva QA-39 sin cambios de filtrado.

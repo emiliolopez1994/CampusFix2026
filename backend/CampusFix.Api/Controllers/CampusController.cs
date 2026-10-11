@@ -86,12 +86,30 @@ public class CampusController(CampusService service,CampusFixDbContext db):Contr
  public Task<IActionResult> Profile([FromBody] JsonObject body)=>Run("auth/profile",body);
  [HttpPut("reportes/{id}/clasificar")]
  public Task<IActionResult> Classify(string id,[FromBody] JsonObject body)=>Run($"reportes/{id}/clasificar",body);
+ [HttpDelete("config/{id}")]
+ public Task<IActionResult> DeleteConfig(string id,[FromBody] JsonObject body)=>Run($"config/{id}",body);
+ [HttpDelete("usuarios/{id}")]
+ public Task<IActionResult> DeleteUser(string id,[FromBody] JsonObject body)=>Run($"usuarios/{id}",body);
+ [HttpDelete("articles/{id}")]
+ public Task<IActionResult> DeleteArticle(string id,[FromBody] JsonObject body)=>Run($"articles/{id}",body);
+ [HttpDelete("mail")]
+ public Task<IActionResult> DeleteMail([FromBody] JsonObject body)=>Run("mail",body);
+ [HttpGet("permission-profiles")]
+ public Task<IActionResult> PermissionProfiles()=>Run("permission-profiles");
+ [HttpPost("permission-profiles"),HttpPut("permission-profiles"),HttpDelete("permission-profiles")]
+ public Task<IActionResult> SavePermissionProfile([FromBody] JsonObject body)=>Run("permission-profiles",body);
+ [HttpPut("reportes/{id}/mensajes/{messageId}")]
+ public Task<IActionResult> EditMessage(string id,string messageId,[FromBody] JsonObject body)=>Run($"reportes/{id}/mensajes/{messageId}",body);
  async Task<IActionResult> Run(string path,JsonObject? body=null){
   Response.Headers.CacheControl="no-store";Response.Headers.XContentTypeOptions="nosniff";
   // Atomic business changes: ticket, history, attachment and notifications commit together.
   // Login persists the failed-attempt counter even when it responds with 401.
   var transactional=path!="auth/login";
   await using var transaction=transactional?await db.Database.BeginTransactionAsync():null;
+  // Serialize administrative/reference writes so dependency and last-owner checks
+  // cannot race another create, reassignment or soft deletion.
+  if(transactional&&Request.Method!="GET"&&(path.StartsWith("usuarios")||path.StartsWith("config")||path.StartsWith("reportes")||path.StartsWith("articles")||path=="mail"||path=="auth/registro"||path=="auth/profile"))
+   await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(20261010,41)");
   var result=await service.Run(path.Trim('/'),Request.Method,body??new(),User,Request.Query);
   if(transaction!=null)await transaction.CommitAsync();
   if(result is Archivo file)return File(file.Content,file.Type,file.Name);

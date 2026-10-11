@@ -9,26 +9,26 @@ public partial class CampusService
     internal const string ProvisionBatch="institutional-2026-10-10-v1";
     internal async Task<JsonObject> ProvisionInstitution(JsonArray credentials)
     {
-        var people=await s.All("users");u=people.First(x=>x.S("role")=="Superadministrador"&&x.B("activo"));p=Defaults("Superadministrador");
+        var people=await ActiveRecords("users");u=people.First(x=>x.S("role")=="Superadministrador"&&x.B("activo"));p=Defaults("Superadministrador");
         var syntheticIds=people.Where(x=>x.S("syntheticOrigin")==ProvisionBatch).Select(x=>x.S("id")).ToHashSet();foreach(var ticket in (await s.All("tickets")).Where(t=>t.S("syntheticOrigin")==""&&syntheticIds.Contains(t.S("reportadoPorId")))){ticket["syntheticOrigin"]=ProvisionBatch;await s.Save("tickets",ticket);}
-        var owner=u.Copy();var areas=(await s.All("config")).Where(c=>c.S("kind")=="areas"&&c.B("activo")).GroupBy(c=>AreaNameKey(c.S("nombre"))).Select(g=>g.OrderByDescending(c=>!string.IsNullOrWhiteSpace(c.S("descripcion"))).ThenBy(c=>c.S("id")).First()).OrderBy(c=>c.S("id")).ToList();
+        var owner=u.Copy();var areas=(await ActiveRecords("config")).Where(c=>c.S("kind")=="areas"&&c.B("activo")).GroupBy(c=>AreaNameKey(c.S("nombre"))).Select(g=>g.OrderByDescending(c=>!string.IsNullOrWhiteSpace(c.S("descripcion"))).ThenBy(c=>c.S("id")).First()).OrderBy(c=>c.S("id")).ToList();
         Require(areas.Count>0,400,"No hay áreas institucionales activas.");var report=new JsonArray();
         string Key(string area,string part)=>"local-"+Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(area))).ToLowerInvariant()[..12]+"-"+part;
         async Task<JsonObject> Person(string id,string name,string role,string area){
-            var existing=await s.Get("users",id);if(existing!=null){Require(existing.S("role")==role&&existing.B("activo"),409,"Cuenta del lote desactivada o con rol cambiado: "+id);var access=credentials.Items().FirstOrDefault(c=>c.S("id")==id);if(access!=null)access["correo"]=existing.S("correo");return existing;}
+            var existing=await s.Get("users",id);if(existing!=null){Require(!existing.B("eliminado")&&existing.S("role")==role&&existing.B("activo"),409,"Cuenta del lote desactivada o con rol cambiado: "+id);var access=credentials.Items().FirstOrDefault(c=>c.S("id")==id);if(access!=null)access["correo"]=existing.S("correo");return existing;}
             var password="Aa9!"+Convert.ToHexString(RandomNumberGenerator.GetBytes(18));
             var person=await s.Save("users",Obj(new{id,correo=id,nombre=name,role,activo=true,areaId=area,areas=new[]{area},operationalAreas=role=="Técnico"?new[]{area}:Array.Empty<string>(),passwordHash=Hash(password),stamp=Id(),mustChange=false,created=Now(),syntheticOrigin=ProvisionBatch}));
             credentials.Add(Obj(new{id,correo=id,nombre=name,role,areaId=area,password,policy="Acceso local inicial; cambio voluntario. Contraseña aleatoria exclusiva."}));return person;
         }
         async Task<JsonObject> Config(string stable,JsonObject body){
-            var saved=await s.Get("provisioning",stable);if(saved!=null){var found=await s.Get("config",saved.S("resourceId"));Require(found!=null,409,"Recurso del lote ausente; requiere revisión.");return found!;}
+            var saved=await s.Get("provisioning",stable);if(saved!=null){var found=await s.Get("config",saved.S("resourceId"));Require(found!=null&&!found.B("eliminado"),409,"Recurso del lote ausente; requiere revisión.");return found!;}
             var result=(JsonObject)await ConfigApi(body);result["syntheticOrigin"]=ProvisionBatch;result=await s.Save("config",result);
             await s.Save("provisioning",Obj(new{id=stable,batch=ProvisionBatch,resourceId=result.S("id")}));return result;
         }
         var firstNames=new[]{"Lucía","Mateo","Camila","Diego","Valeria","Andrés","Elena","Nicolás"};
         var lastNames=new[]{"Varela","Salcedo","Montes","Cabrera","Molina","Serrano","Alvarado","Cevallos"};
         for(int a=0;a<areas.Count;a++){
-            u=owner.Copy();p=Defaults("Superadministrador");var area=areas[a];var aid=area.S("id");var name=area.S("nombre");var config=await s.All("config");people=await s.All("users");
+            u=owner.Copy();p=Defaults("Superadministrador");var area=areas[a];var aid=area.S("id");var name=area.S("nombre");var config=await ActiveRecords("config");people=await ActiveRecords("users");
             var managers=people.Where(x=>x.B("activo")&&x.S("role")=="Administrador"&&area.A("managers").Has(x.S("id"))).ToList();
             if(managers.Count==0){
                 // Reuse explicitly configured team administrators only when that team has this exact area.
@@ -38,7 +38,7 @@ public partial class CampusService
                 foreach(var manager in managers)if(!area.A("managers").Has(manager.S("id"))){if(area["managers"] is not JsonArray)area["managers"]=new JsonArray();area.A("managers").Add(manager.S("id"));}
                 area=await s.Save("config",area);
             }
-            config=await s.All("config");people=await s.All("users");
+            config=await ActiveRecords("config");people=await ActiveRecords("users");
             var team=config.FirstOrDefault(c=>c.S("kind")=="equipos"&&c.B("activo")&&ResourceAreas(c,config).Contains(aid));
             var technician=people.FirstOrDefault(x=>EligibleForArea(x,aid,config));
             technician??=await Person(Key(aid,"responsable")+"@campusfix.example",firstNames[a%8]+" "+lastNames[(a+3)%8],"Técnico",aid);

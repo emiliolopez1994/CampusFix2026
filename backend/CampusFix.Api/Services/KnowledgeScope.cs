@@ -6,7 +6,7 @@ namespace CampusFix.Api.Services;
 public partial class CampusService
 {
     List<JsonObject>? knowledgeConfig;
-    async Task<List<JsonObject>> KnowledgeConfig()=>knowledgeConfig??=await s.All("config");
+    async Task<List<JsonObject>> KnowledgeConfig()=>knowledgeConfig??=await ActiveRecords("config");
     async Task<HashSet<string>> KnowledgeAreas()
     {
         var config=await KnowledgeConfig();
@@ -33,7 +33,7 @@ public partial class CampusService
     async Task<List<JsonObject>> VisibleKnowledge()
     {
         var result=new List<JsonObject>();
-        foreach(var article in await s.All("articles"))if(await CanReadKnowledge(article))result.Add(article);
+        foreach(var article in await ActiveRecords("articles"))if(await CanReadKnowledge(article))result.Add(article);
         return result;
     }
 }

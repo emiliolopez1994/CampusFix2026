@@ -32,7 +32,7 @@ public partial class CampusService
         }).ToList();
     }
     internal static bool EligibleForArea(JsonObject person,string area,List<JsonObject> config)
-        =>area!=""&&person.B("activo")&&person.S("role")=="Técnico"&&(person.A("operationalAreas").Has(area)||config.Any(c=>c.S("kind")=="equipos"&&c.B("activo")&&ResourceAreas(c,config).Contains(area)&&c.A("members").Has(person.S("id"))));
+        =>area!=""&&!person.B("eliminado")&&person.B("activo")&&person.S("role")=="Técnico"&&(person.A("operationalAreas").Has(area)||config.Any(c=>c.S("kind")=="equipos"&&c.B("activo")&&ResourceAreas(c,config).Contains(area)&&c.A("members").Has(person.S("id"))));
 
     void ValidateResourceScope(JsonObject body,JsonObject? old,List<JsonObject> config,List<JsonObject> users)
     {

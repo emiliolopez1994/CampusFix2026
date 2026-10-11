@@ -7,7 +7,7 @@ public partial class CampusService
 {
     async Task<JsonObject> Membership(JsonObject body)
     {
-        var areas=(await s.All("config")).Where(c=>c.S("kind")=="areas"&&c.B("activo")).ToList();var id=body.S("areaId");
+        var areas=(await ActiveRecords("config")).Where(c=>c.S("kind")=="areas"&&c.B("activo")).ToList();var id=body.S("areaId");
         if(areas.Count>0&&!areas.Any(a=>a.S("id")==id)||areas.Count==0&&id!="")throw new ApiError(400,"Selecciona un área de pertenencia activa.","areaId");
         return Obj(new{areaId=id,areas=id==""?Array.Empty<string>():new[]{id}});
     }
@@ -30,12 +30,12 @@ public partial class CampusService
         ticket["participants"]=Arr(users.Where(person=>person.B("activo")&&(person.S("id")==ticket.S("reportadoPorId")||person.S("id")==ticket.S("tecnicoId")||person.S("role")=="Administrador"&&area.A("managers").Has(person.S("id")))).Select(person=>Obj(new{id=person.S("id"),nombre=person.S("nombre"),role=person.S("role")})));
         return ticket;
     }
-    async Task<List<JsonObject>> RoutedTickets(){var configs=await s.All("config");var users=await s.All("users");return (await s.All("tickets")).Select(t=>RouteTicket(t,configs,users)).ToList();}
-    async Task<JsonObject?> RoutedTicket(string id){var t=await s.Get("tickets",id);return t==null?null:RouteTicket(t,await s.All("config"),await s.All("users"));}
+    async Task<List<JsonObject>> RoutedTickets(){var configs=await ActiveRecords("config");var users=await ActiveRecords("users");return (await s.All("tickets")).Select(t=>RouteTicket(t,configs,users)).ToList();}
+    async Task<JsonObject?> RoutedTicket(string id){var t=await s.Get("tickets",id);return t==null?null:RouteTicket(t,await ActiveRecords("config"),await ActiveRecords("users"));}
     bool ManagePerson(JsonObject person)=>u.S("role")=="Superadministrador"||u.S("role")=="Administrador"&&person.S("role") is "Solicitante" or "Técnico"&&(person.A("operationalAreas").Any(a=>p.A("managedAreas").Has(a!.ToString()))||person.S("role")=="Solicitante"&&person.A("areas").Any(a=>p.A("managedAreas").Has(a!.ToString())));
     async Task<JsonArray> Directory(List<JsonObject> tickets)
     {
-        var result=new List<JsonObject>();var all=await s.All("users");var config=await s.All("config");var workload=Admin(u)?await s.All("tickets"):tickets;
+        var result=new List<JsonObject>();var all=await ActiveRecords("users");var config=await ActiveRecords("config");var workload=Admin(u)?await s.All("tickets"):tickets;
         foreach(var person in all){
             var canManage=p.B("gestionarUsuarios")&&ManagePerson(person);
             var candidate=Admin(u)&&p.B("asignar")&&person.S("role")=="Técnico"&&person.B("activo")&&(u.S("role")=="Superadministrador"||p.A("managedAreas").Any(a=>EligibleForArea(person,a!.ToString(),config)));
@@ -57,9 +57,9 @@ public partial class CampusService
         var service=await s.Get("config",Required(b,"serviceId","Servicio"));Require(service!=null&&service.S("kind")=="servicios"&&service.B("activo"),400,"Servicio no válido.");
         var area=await s.Get("config",service.S("responsibleAreaId"));Require(area!=null&&area.S("kind")=="areas"&&area.B("activo"),400,"Configura primero el área responsable del servicio.");
         Require(u.S("role")=="Superadministrador"||p.A("managedAreas").Has(area.S("id")),403,"No administras el área de destino.");
-        var people=await s.All("users");Require(people.Any(person=>person.B("activo")&&person.S("role")=="Administrador"&&area.A("managers").Has(person.S("id"))),400,"El área de destino no tiene administrador activo. Configura sus responsables antes de clasificar.");
+        var people=await ActiveRecords("users");Require(people.Any(person=>person.B("activo")&&person.S("role")=="Administrador"&&area.A("managers").Has(person.S("id"))),400,"El área de destino no tiene administrador activo. Configura sus responsables antes de clasificar.");
         var before=t!.S("responsibleAreaId");t["serviceId"]=service!.S("id");t["serviceNombre"]=service.S("nombre");t["responsibleAreaId"]=area!.S("id");t["responsibleAreaName"]=area.S("nombre");t.Remove("_routingBackfillV1");
         t["fechaActualizacion"]=Now();t.A("historial").Add(Merge(Event("Área responsable clasificada"),Obj(new{previousAreaId=before,responsibleAreaId=area.S("id"),actorId=u.S("id")})));
-        t=RouteTicket(t,await s.All("config"),people);t=await s.Save("tickets",t);await Audit("Clasificación de reporte",id);await NotifyEvent(t,"classified",$"Reporte CF-{id}: asignado a tu área responsable");return SafeTicket(t,p);
+        t=RouteTicket(t,await ActiveRecords("config"),people);t=await s.Save("tickets",t);await Audit("Clasificación de reporte",id);await NotifyEvent(t,"classified",$"Reporte CF-{id}: asignado a tu área responsable");return SafeTicket(t,p);
     }
 }
