@@ -13,6 +13,7 @@ builder.Services.AddDbContext<CampusFixDbContext>(o=>o.UseNpgsql(connection));
 builder.Services.AddIdentityCore<Usuario>(o=>{o.Password.RequiredLength=12;o.Password.RequireDigit=true;o.Password.RequireUppercase=true;o.Password.RequireLowercase=true;o.Password.RequireNonAlphanumeric=true;o.Lockout.MaxFailedAccessAttempts=5;o.Lockout.DefaultLockoutTimeSpan=TimeSpan.FromMinutes(15);}).AddRoles<IdentityRole>().AddEntityFrameworkStores<CampusFixDbContext>();
 builder.Services.AddScoped<IStore,Store>();builder.Services.AddScoped<CampusService>();
 builder.Services.AddHttpClient("mail",c=>c.Timeout=TimeSpan.FromSeconds(20));
+builder.Services.AddHttpClient("reports",c=>{c.Timeout=TimeSpan.FromSeconds(8);c.MaxResponseContentBufferSize=8_000_000;});
 var jwtKey=builder.Configuration["Jwt:Key"];
 // Design-time EF operations and import do not issue sessions.
 var provisioning=args.Contains("--provision-local");

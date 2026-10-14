@@ -88,3 +88,10 @@ Etapas 1–5 completadas dentro del alcance local probado. Instrucciones reprodu
 - PostgreSQL de QA: clúster propio en `tests/CampusFix.Checks/obj/qa-postgres`, loopback:55439; se detiene al terminar. Conserva únicamente datos sintéticos de HTTP/navegador en bases `campusfix_qa*`.
 - Límites pendientes: no despliegue, no prueba autenticada de producción, no entrega real de correo ni auditoría completa de accesibilidad/lector de pantalla. La validación visual automatizada de navegador se centró en Solicitante; los cuatro roles se comprobaron por lógica y HTTP.
 
+
+## Microservicio adicional de informes imprimibles — 2026-10-13
+- Añadido CampusFix.Reports (.NET 10), proceso independiente en loopback:5148, sin acceso a PostgreSQL ni persistencia de documentos. Nueva descarga HTML imprimible desde Centro de informes; CSV y módulos existentes conservados.
+- API: sesión y permiso analitica vigentes, selección limitada a tickets visibles/no eliminados, comunicación interna con clave privada, timeout 8 s y error 503 aislado.
+- Verificado: compilación API/microservicio sin advertencias; Angular ngc y build development correctos; descarga autenticada con tres tickets; selección inaccesible 409; acceso directo sin clave 401; Solicitante sin analitica 403; microservicio detenido devuelve 503 mientras listado de tickets sigue idéntico. Servicio reiniciado y health correcto.
+- Interfaz compilada local servida en http://localhost:5137. Build optimizado no completado por DNS de fonts.googleapis.com; no se cambió la configuración de fuentes. Impresión física/PDF y revisión visual final pendientes de usuario; HTML generado en carpeta privada integral-2026-10-10.
+- Sin migraciones, cambios de credenciales de usuarios, modificaciones de tickets/áreas/notificaciones, push ni despliegues. Se generaron/cerraron sesiones normales para comprobar permisos. Clave independiente Reports:ApiKey fuera de Git; arranque documentado en services/CampusFix.Reports/README.md.
