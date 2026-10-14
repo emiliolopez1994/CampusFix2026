@@ -8,6 +8,7 @@ Empieza por **INSTALACION.md**. El frontend compilado está incluido, de modo qu
 - `scripts`: configuración, compilación, importación y arranque en Windows.
 - `tests/CampusFix.Checks`: comprobaciones de negocio y modo opcional PostgreSQL.
 - `docs`: registros de compilación/pruebas, inventario y ejemplos de API.
+- `services/CampusFix.Reports`: microservicio adicional de informes imprimibles; arranque local con `scripts/Iniciar-InformesLocales.ps1`. Conserva el backend modular y los informes CSV existentes. Consulta su README para configuración y contrato.
 - `VERIFICACION.md`: resultados comprobados y límites pendientes.
 
 Se conservan login con carrusel, tema claro/oscuro, vistas adaptables, panel, tablero, historial, conocimiento, analítica, equipo, áreas, informes CSV, usuarios, roles, permisos, configuración, notificaciones y cuenta.

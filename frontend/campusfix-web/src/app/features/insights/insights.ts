@@ -40,6 +40,16 @@ export class Insights implements OnDestroy{
  ngOnDestroy(){this.dead=true;clearInterval(this.timer);}
  async load(silent=false){if(this.busy)return;this.busy=true;this.refreshing.set(true);if(!silent&&!this.updated())this.loading.set(true);try{const d:any=await firstValueFrom(this.http.get('/api/data'));if(this.dead)return;this.data.set(d);if(this.detail()){const ids=new Set(this.detail().items.map((t:any)=>t.id));this.detail.update(v=>({...v,items:d.tickets.filter((t:any)=>ids.has(t.id))}));}this.auth.user.set(d.user);this.auth.organization.set(d.config.find((c:any)=>c.kind==='organizacion')?.nombre||'CampusFix');this.auth.unread.set(d.notifications.filter((n:any)=>!n.read).length);this.clock.set(Date.now());this.updated.set(new Date());if(this.view==='analitica'){const k=await firstValueFrom(this.http.get('/api/analytics'));if(!this.dead)this.knowledge.set(k);}this.error.set('');}catch(e:any){if(!this.dead)this.error.set(e.error?.title||'No se pudo actualizar. Se conservan los últimos datos disponibles.');}finally{this.busy=false;if(!this.dead){this.loading.set(false);this.refreshing.set(false);}}}
  combine(a:any[],b:any[]){return [...a,...b];}
+ printing=signal(false);printError=signal('');
+ async downloadPrintable(){
+  if(this.printing())return;this.printing.set(true);this.printError.set('');
+  const ids=this.cohort().map((t:any)=>t.id);
+  try{const blob=await firstValueFrom(this.http.post('/api/informes/imprimible',{ids},{responseType:'blob'}));
+   const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='CampusFix-solicitudes-'+this.start()+'-'+this.end()+'.html';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+   this.exports.update(xs=>[{name:a.download,title:'Informe imprimible',count:ids.length,date:new Date()},...xs].slice(0,8));
+  }catch(e:any){let message='No se pudo generar el informe imprimible. Puedes utilizar las descargas CSV.';if(e.error instanceof Blob){try{message=JSON.parse(await e.error.text()).title||message;}catch{}}this.printError.set(message);}
+  finally{this.printing.set(false);}
+ }
  configs(kind:string){return this.data().config.filter((c:any)=>c.kind===kind&&(this.auth.user()?.role!=='Administrador'||(kind==='areas'?this.auth.user()?.permissions?.managedAreas?.includes(c.id):kind==='servicios'?this.auth.user()?.permissions?.managedAreas?.includes(c.responsibleAreaId):kind==='equipos'?this.data().tickets.some((t:any)=>t.teamId===c.id):true))); }
  inRange(date:string){const key=dayKey(date,this.zone());return !!key&&key>=this.start()&&key<=this.end();}
  setPeriod(value:string){this.period=value;if(value!=='custom'){const today=dayKey(new Date(),this.zone());this.end.set(today);this.start.set(value==='all'?(this.data().tickets.map((t:any)=>dayKey(t.fechaReporte,this.zone())).sort()[0]||today):shiftDay(today,1-Number(value)));}}

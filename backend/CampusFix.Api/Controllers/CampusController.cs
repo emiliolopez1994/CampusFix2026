@@ -10,6 +10,8 @@ namespace CampusFix.Api.Controllers;
 public class CampusController(CampusService service,CampusFixDbContext db):ControllerBase {
  [HttpGet("health")]
  public async Task<IActionResult> Health(){var connected=await db.Database.CanConnectAsync();return StatusCode(connected?200:503,new{estado=connected?"Conectado":"Sin conexión",baseDatos="PostgreSQL",frontend="Angular",backend="ASP.NET Core"});}
+ [HttpPost("informes/imprimible")]
+ public Task<IActionResult> Printable([FromBody] JsonObject body)=>Run("informes/imprimible",body);
  [HttpGet("auth/me")]
  public Task<IActionResult> Operation0()=>Run("auth/me");
  [HttpPost("auth/login")]

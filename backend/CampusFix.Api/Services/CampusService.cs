@@ -33,6 +33,7 @@ public partial class CampusService(IStore store,IConfiguration configuration,IPa
   if(path=="auth/password"&&method=="POST"){var pw=Password(b);Require(Check(b.S("current"),u.S("passwordHash")),400,"La contraseña actual no es correcta.");u["passwordHash"]=Hash(pw);u["stamp"]=Id();u["mustChange"]=false;await s.Save("users",u);return new{ok=true};}
   Require(!u.B("mustChange"),403,"Debes cambiar tu contraseña antes de continuar.");
   if(path=="auth/profile"&&method=="PUT")return await UpdateMembership(b);
+  if(path=="informes/imprimible"&&method=="POST")return await PrintableReport(b);
   if(path=="data"&&method=="GET"){
    var ts=(await RoutedTickets()).Where(t=>!t.B("eliminado")&&See(u,p,t)).ToList();await EnsureSlaNotices(ts);var users=await ActiveRecords("users");var configs=await ActiveRecords("config");foreach(var c in configs)c["fields"]=Arr(c.A("fields").Items().Where(f=>p.B("internos")||!f.B("internal")));var articles=await VisibleKnowledge();foreach(var a in articles){if(!p.B("gestionarConocimiento"))a.Remove("versions");else a["versions"]=Arr(a.A("versions").Items().Where(v=>p.B("internos")||v.S("visibility")=="usuarios"&&v.S("status")=="Publicado"));}var me=Public(u);me["permissions"]=p.Copy();return new{user=me,tickets=ts.Select(t=>SafeTicket(t,p)),users=await Directory(ts),config=ScopedConfig(configs),knowledgeAreaIds=await KnowledgeAreas(),articles,notifications=Notifications(await s.All("notifications"),ts)};
   }
