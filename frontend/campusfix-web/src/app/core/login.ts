@@ -5,7 +5,7 @@ import { Icon } from './icon';
 @Component({selector:'cf-login',imports:[ReactiveFormsModule,Icon],templateUrl:'./login.html',styleUrl:'./login.css'})
 export class Login implements OnInit,OnDestroy {
  playing=signal(true);hovered=false;focused=false;private timer?:ReturnType<typeof setInterval>;
- ngOnInit(){if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches)this.playing.set(false);this.timer=setInterval(()=>{if(this.playing()&&!this.hovered&&!this.focused&&!document.hidden)this.move(1);},7000);}
+ ngOnInit(){if(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches)this.playing.set(false);this.timer=setInterval(()=>{if(this.playing()&&!this.hovered&&!this.focused&&!document.hidden)this.move(1);},3500);}
  ngOnDestroy(){if(this.timer)clearInterval(this.timer);}
  focusLeft(event:FocusEvent){this.focused=!!(event.currentTarget as HTMLElement)?.contains(event.relatedTarget as Node);}
 

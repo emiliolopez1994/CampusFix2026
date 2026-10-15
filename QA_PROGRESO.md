@@ -95,3 +95,8 @@ Etapas 1–5 completadas dentro del alcance local probado. Instrucciones reprodu
 - Verificado: compilación API/microservicio sin advertencias; Angular ngc y build development correctos; descarga autenticada con tres tickets; selección inaccesible 409; acceso directo sin clave 401; Solicitante sin analitica 403; microservicio detenido devuelve 503 mientras listado de tickets sigue idéntico. Servicio reiniciado y health correcto.
 - Interfaz compilada local servida en http://localhost:5137. Build optimizado no completado por DNS de fonts.googleapis.com; no se cambió la configuración de fuentes. Impresión física/PDF y revisión visual final pendientes de usuario; HTML generado en carpeta privada integral-2026-10-10.
 - Sin migraciones, cambios de credenciales de usuarios, modificaciones de tickets/áreas/notificaciones, push ni despliegues. Se generaron/cerraron sesiones normales para comprobar permisos. Clave independiente Reports:ApiKey fuera de Git; arranque documentado en services/CampusFix.Reports/README.md.
+
+## Ajuste del carrusel de acceso — 2026-10-14
+- Imágenes suministradas ajustadas al ancho y alto completos del panel, sin recorte por object-fit ni franja adicional de títulos. Se conserva la composición original de la primera diapositiva.
+- Intervalo reducido de 7 a 3,5 segundos; se conserva pausa por interacción y preferencia de movimiento reducido.
+- Compilación Angular development correcta y salida local wwwroot actualizada. Sin cambios de API o datos.
