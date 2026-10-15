@@ -100,3 +100,9 @@ Etapas 1–5 completadas dentro del alcance local probado. Instrucciones reprodu
 - Imágenes suministradas ajustadas al ancho y alto completos del panel, sin recorte por object-fit ni franja adicional de títulos. Se conserva la composición original de la primera diapositiva.
 - Intervalo reducido de 7 a 3,5 segundos; se conserva pausa por interacción y preferencia de movimiento reducido.
 - Compilación Angular development correcta y salida local wwwroot actualizada. Sin cambios de API o datos.
+
+## Rapidez de navegación — 2026-10-14
+- Causa medida: /api/data recalculaba permisos de los usuarios para cada ticket vencido e intentaba crear de nuevo recordatorios SLA ya existentes al navegar.
+- Optimización puntual en Notifications.cs: carga compartida de datos durante una sola consulta, permisos reutilizados dentro de esa evaluación y omisión de recordatorios existentes. CreateOnce conserva protección ante concurrencia; no hay caché entre peticiones ni cambios de autorización.
+- Misma cuenta Administrador: antes 1344/1291 ms; después 205 ms inicial y 121/119 ms repetidos. Se mantienen 6 tickets y 12 notificaciones. Mejora aproximada 91% en las consultas repetidas; no constituye una medición de todos los roles o de renderizado del navegador.
+- Compilación Navigation correcta, cero advertencias/errores; API local reiniciada. Sin cambios de frontend, credenciales, producción ni despliegues.

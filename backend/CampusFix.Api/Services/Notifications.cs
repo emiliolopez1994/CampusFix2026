@@ -5,12 +5,23 @@ using static CampusFix.Api.Services.Permissions;
 namespace CampusFix.Api.Services;
 public partial class CampusService
 {
-    async Task NotifyEvent(JsonObject ticket,string type,string title,string targetId="",bool internalOnly=false)
+    sealed record SlaBatch(List<JsonObject> Users,List<JsonObject> Config,JsonObject? Mail,HashSet<string> Notices)
     {
-        var users=await ActiveRecords("users");var config=await ActiveRecords("config");var mail=await s.Get("settings","mail");
+        public Dictionary<string,JsonObject> Permissions {get;}=new();
+    }
+    async Task NotifyEvent(JsonObject ticket,string type,string title,string targetId="",bool internalOnly=false,SlaBatch? batch=null)
+    {
+        var users=batch?.Users??await ActiveRecords("users");var config=batch?.Config??await ActiveRecords("config");var mail=batch is null?await s.Get("settings","mail"):batch.Mail;
         var t=RouteTicket(ticket,config,users);
         foreach(var person in users.Where(x=>x.B("activo"))){
-            var id=person.S("id");var perms=await Effective(s,person);
+            var id=person.S("id");
+            var eventKey=type=="sla"?$"ticket-{t.S("id")}-sla":$"ticket-{t.S("id")}-v{t.I("_v")}-{type}";
+            var noticeId=eventKey+"-"+id;
+            // Existing reminders are immutable CreateOnce records; avoid rebuilding them on every navigation.
+            if(batch!=null&&(batch.Notices.Contains(noticeId)||!Admin(person)))continue;
+            JsonObject perms;
+            if(batch!=null&&batch.Permissions.TryGetValue(id,out var cached))perms=cached;
+            else {perms=await Effective(s,person);if(batch!=null)batch.Permissions[id]=perms;}
             var manager=person.S("role")=="Administrador"&&See(person,perms,t);
             var owner=person.S("role")=="Superadministrador";
             var recipient=type switch {
@@ -23,9 +34,8 @@ public partial class CampusService
                 _=>false
             };
             if(!recipient||!See(person,perms,t)||internalOnly&&!perms.B("internos")||type is not "created" and not "sla"&&id==u.S("id"))continue;
-            var eventKey=type=="sla"?$"ticket-{t.S("id")}-sla":$"ticket-{t.S("id")}-v{t.I("_v")}-{type}";
-            var noticeId=eventKey+"-"+id;
             var added=await s.CreateOnce("notifications",Obj(new{id=noticeId,userId=id,title,ticketId=t.S("id"),eventType=type,eventKey,@internal=internalOnly,fecha=Now(),read=false}));
+            batch?.Notices.Add(noticeId);
             if(added&&mail.B("enabled")&&!configuration.GetValue<bool>("LocalProvisioning:SuppressMail"))await s.CreateOnce("mail",Obj(new{id=noticeId,userId=id,to=person.S("correo"),title,ticketId=t.S("id"),status="pending",attempts=0,created=Now(),next=Now()}));
         }
     }
@@ -33,11 +43,15 @@ public partial class CampusService
     {
         // Only the responsible admin's polling evaluates that area's reminders.
         if(!Admin(u))return;
+        SlaBatch? batch=null;
         foreach(var t in tickets.Where(t=>!t.B("eliminado")&&t.I("estado")<4&&See(u,p,t))){
             var meta=t.O("meta");
             var overdue=meta.S("resolutionDue")!=""&&Date(meta.S("resolutionDue"))<DateTimeOffset.UtcNow||t.S("firstResponseAt")==""&&meta.S("responseDue")!=""&&Date(meta.S("responseDue"))<DateTimeOffset.UtcNow;
             var waiting=t.S("tecnicoId")==""&&Date(t.S("fechaReporte"))<DateTimeOffset.UtcNow.AddHours(-24);
-            if(overdue||waiting)await NotifyEvent(t,"sla",$"CF-{t.S("id").PadLeft(4,'0')}: requiere atención por {(overdue?"meta vencida":"asignación pendiente")}");
+            if(overdue||waiting){
+                batch??=new(await ActiveRecords("users"),await ActiveRecords("config"),await s.Get("settings","mail"),(await s.All("notifications")).Select(n=>n.S("id")).ToHashSet());
+                await NotifyEvent(t,"sla",$"CF-{t.S("id").PadLeft(4,'0')}: requiere atención por {(overdue?"meta vencida":"asignación pendiente")}",batch:batch);
+            }
         }
     }
     async Task ValidateActionTarget(JsonObject t,string target,bool internalOnly)
