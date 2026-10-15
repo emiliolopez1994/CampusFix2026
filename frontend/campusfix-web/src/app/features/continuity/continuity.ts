@@ -1,4 +1,4 @@
-import {Component,inject,signal,computed} from '@angular/core';
+import {Component,inject,signal} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
 import {HttpClient} from '@angular/common/http';
@@ -8,7 +8,6 @@ import {DialogFocus} from '../reportes/components/dialog-focus';
 @Component({selector:'cf-continuity',imports:[CommonModule,FormsModule,RouterLink,DialogFocus],templateUrl:'./continuity.html',styleUrl:'./continuity.css'})
 export class Continuity {
  private http=inject(HttpClient);data=signal<any>(null);busy=signal(false);error=signal('');success=signal('');tab=signal('impact');edit=signal<any>(null);confirmation=signal<any>(null);
- synthetic=computed(()=>this.data()?.rooms.some((r:any)=>r.origin==='synthetic-continuity-v1'));
  constructor(){void this.load();}
  async load(){if(this.busy())return;this.busy.set(true);this.error.set('');try{this.data.set(await firstValueFrom(this.http.get('/api/continuity')));}catch(e:any){this.error.set(e.error?.title||'No se pudo cargar continuidad académica.');}finally{this.busy.set(false);}}
  room(id:string){return this.data()?.rooms.find((r:any)=>r.id===id)?.name||'Aula archivada';}

@@ -4,7 +4,6 @@
  @if(success()){<div class="notice" role="status">{{success()}}</div>}
  @if(busy()){<p role="status">Procesando…</p>}
  @if(data();as d){
- @if(synthetic()){<div class="notice">Las aulas y actividades iniciales son datos ficticios para la presentación académica. Sus vínculos de ejemplo no confirman la ubicación real de una incidencia. Puedes registrar y gestionar datos reales desde esta sección.</div>}
  <div class="tabs" role="group" aria-label="Secciones de continuidad">@for(t of [{id:'impact',label:'Impacto y alternativas'},{id:'rooms',label:'Aulas'},{id:'activities',label:'Actividades'},{id:'links',label:'Incidencias vinculadas'},{id:'history',label:'Decisiones y resultados'}];track t.id){<button class="button" [class.primary]="tab()===t.id" [class.secondary]="tab()!==t.id" (click)="tab.set(t.id)">{{t.label}}</button>}</div>
  @if(tab()==='impact'){
  <div class="metrics"><article class="card"><strong>{{d.summary.activities}}</strong><span>Actividades afectadas · próximos 7 días</span></article><article class="card"><strong>{{d.summary.participantAttendances}}</strong><span>Participaciones previstas afectadas</span></article><article class="card"><strong>{{d.summary.personHours|number:'1.0-1'}}</strong><span>Horas-persona expuestas estimadas</span></article><article class="card"><strong>{{d.summary.confirmedContinued}}</strong><span>Continuidades confirmadas por administración</span></article></div>

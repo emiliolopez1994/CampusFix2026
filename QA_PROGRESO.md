@@ -115,3 +115,7 @@ Etapas 1–5 completadas dentro del alcance local probado. Instrucciones reprodu
 - Verificación focalizada: 19 comprobaciones de reglas y PostgreSQL QA; administrador ve solo su área; Técnico/Solicitante 403, servicio sin clave 401. Navegador: aprobación y actualización de impacto, recarga, vista escritorio/móvil; sin errores JS. La medición móvil inicial ocurrió durante la transición del menú; tras estabilizar no hay desbordamiento, sin cambios ajenos de CSS.
 - Caída de continuidad devuelve 503 aislado; API principal sigue sirviendo tickets. Servicio reiniciado y disponible. Angular compilado y wwwroot actualizado; API en configuración Continuity.
 - Límites: horarios de ejemplo fijados al primer aprovisionamiento (editables); no son horarios reales ni se regeneran automáticamente. Confirmación de resultado comprobada en QA con reloj controlado. Superusuario original: validación interactiva manual del usuario. NuGet advierte NU1900 por fuente de vulnerabilidades inaccesible; compilaciones correctas. No push ni despliegues; archivos package-lock ajenos conservados.
+
+## Ajuste visual de continuidad — 2026-10-14
+- Retirado el aviso de datos ficticios de la interfaz de Continuidad académica a petición del usuario. Se conserva la procedencia interna y los datos existentes.
+- Compilación Angular development correcta y wwwroot local actualizado. Sin cambios en API ni PostgreSQL.
