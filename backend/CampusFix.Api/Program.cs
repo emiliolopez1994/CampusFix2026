@@ -14,7 +14,6 @@ builder.Services.AddIdentityCore<Usuario>(o=>{o.Password.RequiredLength=12;o.Pas
 builder.Services.AddScoped<IStore,Store>();builder.Services.AddScoped<CampusService>();
 builder.Services.AddHttpClient("mail",c=>c.Timeout=TimeSpan.FromSeconds(20));
 builder.Services.AddHttpClient("reports",c=>{c.Timeout=TimeSpan.FromSeconds(8);c.MaxResponseContentBufferSize=8_000_000;});
-builder.Services.AddHttpClient("continuity",c=>{c.Timeout=TimeSpan.FromSeconds(12);c.MaxResponseContentBufferSize=8_000_000;});
 var jwtKey=builder.Configuration["Jwt:Key"];
 // Design-time EF operations and import do not issue sessions.
 var provisioning=args.Contains("--provision-local");
